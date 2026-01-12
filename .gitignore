@@ -1,0 +1,7 @@
+/target
+/docs
+headless_engine_scope.md
+# Local-only working log
+WORKING.md
+# Local helper scripts
+/scripts/wakatime_summary.sh
