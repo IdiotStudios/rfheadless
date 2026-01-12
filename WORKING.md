@@ -17,6 +17,13 @@ WakaTime summary commands
 - If you have `wakatime-cli` installed and configured, run:
   wakatime-cli --project rfheadless summarize --period "last_7_days"
 
+Logging sessions automatically
+- Use `scripts/log_session.sh --auto -m "short note"` to append today's project total (requires `wakatime-cli`) to `WORKING.md`.
+- Or: `scripts/log_session.sh --duration 45 -m "Worked on microtasks"` to append a manual duration.
+
+Crontab example (append daily at 23:59):
+- Add to your crontab: `59 23 * * * cd /path/to/rfheadless && ./scripts/log_session.sh --auto -m "daily summary"`
+
 Local notes
 - Branch: wip/rfengine (local)
 - Keep small, focused commits and update this file with time spent and short descriptions.
