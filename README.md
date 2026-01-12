@@ -61,17 +61,14 @@ High-level goals and rough estimates (subject to change):
 ## Scope & Boundaries
 
 **(current focus):**
-- Deterministic JS eval with a small, safe DOM shim and console forwarding
-- CSS parsing for computed values needed by tests (normalized colors, basic units)
-- Test-driven development with golden fixtures to allow Chrome-free verification
-- Optional, gated Chrome/Chromium comparisons when available
+- Full, pixel-accurate rendering equivalent to Chromium (phase 1: simplified layout & paint pipeline focusing on flow layout, box model, reflow, and basic rasterization).
+- Complete Web platform APIs needed for parity testing (service workers, media playback hooks, accessibility tree basics, and device emulation), implemented incrementally and gated by tests.
+- An optional CDP server surface for external tooling (a feature-gated translation façade to support integrations and Chrome-compatibility checks).
 
 **(long-term):**
-- Full, pixel-accurate rendering equivalent to Chromium (requires a layout/paint stack)
-- Complete Web platform APIs (service workers, media, accessibility tree, full device emulation)
-- Serving a CDP server surface for external tooling (we may optionally add a translation façade later)
+- Expand and stabilize the rendering and platform stacks, add performance optimizations, implement advanced layout features (flex/grid, table layout), and harden via fuzzing and benchmarks.
 
-Decisions favor a pragmatic, test-first approach: implement what we need for deterministic tests and expand toward parity iteratively.
+Decisions favor a pragmatic, test-first approach: prioritize an incremental path to platform parity by implementing the rendering stack and platform APIs as driven by deterministic tests and parity goals.
 
 ---
 
