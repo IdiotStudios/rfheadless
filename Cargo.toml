@@ -1,0 +1,43 @@
+[package]
+name = "rfheadless"
+version = "0.1.0"
+edition = "2021"
+authors = ["RFox Contributors"]
+description = "A headless browsing engine API for Rust"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/seradedstripes/rfheadless"
+readme = "README.md"
+documentation = "https://docs.rs/rfheadless"
+keywords = ["browser", "headless", "automation", "cdp"]
+categories = ["web-programming", "api-bindings"]
+
+[features]
+default = ["rfengine"]
+cdp = ["headless_chrome"]
+simple = ["reqwest", "scraper"]
+rfengine = ["reqwest", "scraper", "boa_engine", "url"]
+
+[dependencies]
+anyhow = "1.0"
+thiserror = "2.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+base64 = "0.21"
+
+# Async helpers
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "sync"] }
+log = "0.4"
+
+# HTTP + HTML parsing backend (simple engine & RFEngine)
+reqwest = { version = "0.11", optional = true, features = ["blocking", "rustls-tls"] }
+scraper = { version = "0.13", optional = true }
+boa_engine = { version = "0.20", optional = true }
+url = { version = "2", optional = true }
+
+# CDP backend (feature-gated)
+headless_chrome = { git = "https://github.com/rust-headless-chrome/rust-headless-chrome", optional = true }
+
+[dev-dependencies]
+anyhow = "1.0"
+tokio = { version = "1.0", features = ["full"] }
+tiny_http = "0.12"
