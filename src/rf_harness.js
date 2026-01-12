@@ -314,3 +314,119 @@ function getComputedStyle(el) {
 var __rfox_console = [];
 var document = { title: @TITLE@, body: @BODY@, styles: @STYLES@, querySelector: querySelector, querySelectorAll: querySelectorAll };
 var console = { log: function() { var txt = Array.prototype.slice.call(arguments).join(' '); var st=''; try{ st=(new Error()).stack || (new Error()).toString(); }catch(e){} if (typeof __rfox_console_log === 'function') { try{ __rfox_console_log(txt, st); }catch(e){} } else { __rfox_console.push(txt); } }, error: function() { var txt = Array.prototype.slice.call(arguments).join(' '); var st=''; try{ st=(new Error()).stack || (new Error()).toString(); }catch(e){} if (typeof __rfox_console_error === 'function') { try{ __rfox_console_error(txt, st); }catch(e){} } else { __rfox_console.push(txt); } } };
+
+// Microtask & macrotask (timer) support for M1
+var __rfox_microtasks = [];
+function queueMicrotask(fn) {
+    if (typeof fn === 'function') {
+        __rfox_microtasks.push(fn);
+    }
+}
+function __rfox_run_microtasks() {
+    while (__rfox_microtasks.length) {
+        var f = __rfox_microtasks.shift();
+        try { f(); } catch(e) { try { console.error('microtask error', e); } catch(_) {} }
+    }
+}
+
+var __rfox_now = 0; // logical time in ms for deterministic timers
+var __rfox_macrotasks = []; // {id, fn, due, interval}
+var __rfox_next_timer_id = 1;
+function __rfox_enqueue_macrotask(fn, due, id, interval) {
+    __rfox_macrotasks.push({ id: id, fn: fn, due: due === undefined ? __rfox_now : due, interval: interval || 0 });
+}
+
+function setTimeout(fn, delay) {
+    var cb = (typeof fn === 'function') ? fn : function() { try { eval(fn); } catch(e) {} };
+    var id = __rfox_next_timer_id++;
+    __rfox_enqueue_macrotask(cb, __rfox_now + (delay||0), id, 0);
+    return id;
+}
+function clearTimeout(id) {
+    for (var i=0;i<__rfox_macrotasks.length;i++) { if (__rfox_macrotasks[i].id === id) { __rfox_macrotasks.splice(i,1); return; } }
+}
+function setInterval(fn, interval) {
+    var cb = (typeof fn === 'function') ? fn : function() { try { eval(fn); } catch(e) {} };
+    var id = __rfox_next_timer_id++;
+    __rfox_enqueue_macrotask(cb, __rfox_now + (interval||0), id, interval||0);
+    return id;
+}
+function clearInterval(id) { clearTimeout(id); }
+
+function __rfox_run_one_macrotask() {
+    // find first macrotask that is due
+    var idx = -1;
+    for (var i=0;i<__rfox_macrotasks.length;i++) {
+        if (__rfox_macrotasks[i].due <= __rfox_now) { idx = i; break; }
+    }
+    if (idx === -1) return false;
+    var t = __rfox_macrotasks.splice(idx,1)[0];
+    try { t.fn(); } catch(e) { try { console.error('macrotask error', e); } catch(_) {} }
+    // if interval, reschedule
+    if (t.interval && t.interval > 0) {
+        __rfox_enqueue_macrotask(t.fn, __rfox_now + t.interval, t.id, t.interval);
+    }
+    return true;
+}
+
+function __rfox_run_until_idle(max_iters) {
+    var iters = 0;
+    var executed = false;
+    max_iters = max_iters || 10000; // safety bound
+    while (iters++ < max_iters) {
+        __rfox_run_microtasks();
+        var ran = __rfox_run_one_macrotask();
+        if (!ran) break;
+        executed = true;
+    }
+    // final microtasks drain
+    __rfox_run_microtasks();
+    return executed;
+}
+
+function __rfox_tick(ms) {
+    // advance logical time and run tasks due
+    __rfox_now += (ms||0);
+    __rfox_run_until_idle();
+}
+
+// Minimal Promise polyfill only if missing (simple, job-queue style via queueMicrotask)
+(function(){
+    if (typeof Promise !== 'function') {
+        function SimplePromise(executor) {
+            this._state = 'pending';
+            this._value = undefined;
+            this._handlers = [];
+            var resolve = (v) => {
+                if (this._state !== 'pending') return;
+                this._state = 'fulfilled';
+                this._value = v;
+                this._handlers.forEach(h => queueMicrotask(function(){ if (h.onFulfilled) { try { h.onFulfilled(v); } catch(e) { if (h.onRejected) h.onRejected(e); } } }));
+            };
+            var reject = (e) => {
+                if (this._state !== 'pending') return;
+                this._state = 'rejected';
+                this._value = e;
+                this._handlers.forEach(h => queueMicrotask(function(){ if (h.onRejected) { try { h.onRejected(e); } catch(err) {} } }));
+            };
+            try { executor(resolve, reject); } catch(e) { reject(e); }
+        }
+        SimplePromise.prototype.then = function(onFulfilled, onRejected) {
+            var self = this;
+            return new SimplePromise(function(resolve, reject){
+                function handleFul(v){ try { if (onFulfilled) { resolve(onFulfilled(v)); } else { resolve(v); } } catch(e) { reject(e); } }
+                function handleRej(e){ try { if (onRejected) { resolve(onRejected(e)); } else { reject(e); } } catch(err) { reject(err); } }
+                if (self._state === 'pending') { self._handlers.push({ onFulfilled: handleFul, onRejected: handleRej }); }
+                else if (self._state === 'fulfilled') { queueMicrotask(function(){ handleFul(self._value); }); }
+                else { queueMicrotask(function(){ handleRej(self._value); }); }
+            });
+        };
+        SimplePromise.prototype.catch = function(fn){ return this.then(null, fn); };
+        SimplePromise.resolve = function(v){ return new SimplePromise(function(r){ r(v); }); };
+        SimplePromise.reject = function(e){ return new SimplePromise(function(_,rej){ rej(e); }); };
+        Promise = SimplePromise;
+    }
+})();
+
+// Expose helper for manual flushing from host-side tests
+// __rfox_run_until_idle() is already available to call from host-injected script

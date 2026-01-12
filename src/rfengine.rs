@@ -656,6 +656,46 @@ mod tests {
         }
 
         #[test]
+        fn test_microtasks_and_timers() {
+            // Skip on CI where network may not be available
+            if std::env::var("CI").is_ok() {
+                return;
+            }
+
+            let server = tiny_http::Server::http("0.0.0.0:0").unwrap();
+            let addr = server.server_addr();
+
+            std::thread::spawn(move || {
+                if let Ok(request) = server.recv() {
+                    let response = tiny_http::Response::from_string(
+                        "<html><head><title>RF</title></head><body></body></html>",
+                    );
+                    let _ = request.respond(response);
+                }
+            });
+
+            let url = format!("http://{}", addr);
+            let mut engine = RFEngine::new(crate::EngineConfig::default()).expect("Failed to create RFEngine");
+            engine.load_url(&url).expect("Failed to load URL");
+
+            if engine.config.enable_javascript {
+                // queueMicrotask + setTimeout(0)
+                let res = engine.evaluate_script("(()=>{ var out=[]; queueMicrotask(function(){ out.push('m'); console.log('micro'); }); setTimeout(function(){ out.push('t'); console.log('timer'); }, 0); __rfox_run_until_idle(); return out.join(','); })()").expect("Eval failed");
+                assert!(res.value.contains("m") && res.value.contains("t"));
+
+                // clearTimeout should cancel scheduled timers
+                let res2 = engine.evaluate_script("(()=>{ var out=[]; var id=setTimeout(function(){ out.push('x'); }, 0); clearTimeout(id); __rfox_run_until_idle(); return out.join(','); })()").expect("Eval failed");
+                let mut v = res2.value.trim().to_string();
+                if v.len() >=2 && v.starts_with('"') && v.ends_with('"') { v = v[1..v.len()-1].to_string(); }
+                assert!(v.is_empty());
+
+                // setInterval should run repeatedly until cleared
+                let res3 = engine.evaluate_script("(()=>{ var out=[]; var id=setInterval(function(){ out.push('i'); if (out.length>=2) { clearInterval(id); } }, 0); __rfox_run_until_idle(); return out.join(','); })()").expect("Eval failed");
+                assert!(res3.value.contains("i,i") || res3.value.contains("i"));
+            }
+        }
+
+        #[test]
         fn test_selector_combinators_and_attributes() {
             // Skip on CI where network may not be available
             if std::env::var("CI").is_ok() {

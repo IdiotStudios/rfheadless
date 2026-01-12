@@ -33,9 +33,8 @@ High-level goals and rough estimates (subject to change):
 
 - **M1 — JS runtime safety & scheduling** (≈ 100–140h)
   - Script timeouts, runtime limits (done: timeouts + loop/recursion limits)
-  - Microtask/job queue & Promise support
-  - Timer APIs: `setTimeout` / `setInterval` and cancellation
-  - Context reuse & isolation improvements
+  - Microtask/job queue & timer APIs (progress: microtask queue, timers (`setTimeout`/`setInterval`, cancellation), and helpers added; basic Promise polyfill when native Promise is not available)
+  - Context reuse & isolation improvements (TODO — next work item)
 
 - **M2 — CSSOM & computed-value parity** (≈ 100–140h)
   - Full property normalization (em/rem/percent conversions, hsl/hsla/hwb)
