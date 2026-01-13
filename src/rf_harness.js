@@ -175,6 +175,13 @@ function querySelectorAll(sel) {
     return out;
 }
 
+// Snapshot helper useful for debugging and tests
+function __rfox_snapshot() {
+    try {
+        return JSON.stringify({ dom: __rfox_dom, styles: __rfox_styles, now: __rfox_now, macrotasks: __rfox_macrotasks.map(function(m){ return { id: m.id, due: m.due, interval: m.interval }; }) });
+    } catch(e) { return ''; }
+}
+
 // Simple CSS parser: populate __rfox_rules from document.styles
 var __rfox_styles = @STYLES@;
 var __rfox_rules = [];

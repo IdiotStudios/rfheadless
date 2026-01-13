@@ -3,6 +3,10 @@ name = "rfheadless"
 version = "0.1.0"
 edition = "2021"
 authors = ["RFox Contributors"]
+
+[[bin]]
+name = "rfheadless"
+path = "src/main.rs"
 description = "A headless browsing engine API for Rust"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/seradedstripes/rfheadless"

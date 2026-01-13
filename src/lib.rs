@@ -83,6 +83,8 @@ pub struct EngineConfig {
     pub enable_js_isolation: bool,
     /// Whether to enable images
     pub enable_images: bool,
+    /// Whether to spawn process-backed workers for stronger abort semantics
+    pub use_process_worker: bool,
     /// Script execution timeout in milliseconds (applies to `evaluate_script`)
     pub script_timeout_ms: u64,
     /// Maximum loop iterations before Boa throws an error (0 => disabled)
@@ -101,6 +103,7 @@ impl Default for EngineConfig {
             enable_javascript: true,
             enable_js_isolation: true,
             enable_images: true,
+            use_process_worker: false,
             script_timeout_ms: 5000,
             script_loop_iteration_limit: 1000000,
             script_recursion_limit: 1024,
