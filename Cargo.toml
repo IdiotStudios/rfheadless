@@ -9,7 +9,7 @@ name = "rfheadless"
 path = "src/main.rs"
 description = "A headless browsing engine API for Rust"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/seradedstripes/rfheadless"
+repository = "https://github.com/idiotstudios/rfheadless"
 readme = "README.md"
 documentation = "https://docs.rs/rfheadless"
 keywords = ["browser", "headless", "automation", "cdp"]
@@ -40,6 +40,10 @@ url = { version = "2", optional = true }
 
 # CDP backend (feature-gated)
 headless_chrome = { git = "https://github.com/rust-headless-chrome/rust-headless-chrome", optional = true }
+
+# Deterministic test helpers (used by rendering/golden tests)
+sha2 = "0.10"
+hex = "0.4"
 
 [dev-dependencies]
 anyhow = "1.0"

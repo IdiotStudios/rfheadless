@@ -1,3 +1,7 @@
+/// Quick note about this file:
+/// This file was made entirely by AI as I suck as javascript
+/// So please be kind when reviewing it :)
+
 var __rfox_dom = (typeof __RFOX_ELEMENTS__ !== 'undefined' ? __RFOX_ELEMENTS__ : []);
 
 function __matches_simple(el, sel) {
@@ -137,6 +141,9 @@ function __wrap_el(el) {
     }
     if (!el.textContent) {
         el.textContent = function() { return (this.text === undefined || this.text === null) ? "" : this.text; };
+    }
+    if (!el.innerHTML) {
+        el.innerHTML = function(v) { if (arguments.length) { this.text = v; } return (this.text === undefined || this.text === null) ? "" : this.text; };
     }
     // dataset: expose data-* attributes as camelCase props and helpers
     if (!el.dataset) {
@@ -310,6 +317,8 @@ function getComputedStyle(el) {
 
 var __rfox_console = [];
 var document = { title: (typeof __RFOX_TITLE__ !== 'undefined' ? __RFOX_TITLE__ : "Title"), body: (typeof __RFOX_BODY__ !== 'undefined' ? __RFOX_BODY__ : "Body"), styles: __rfox_styles, querySelector: querySelector, querySelectorAll: querySelectorAll };
+// Provide a `window` alias for tests that reference it (falls back to globalThis)
+var window = (typeof window !== 'undefined') ? window : (typeof globalThis !== 'undefined' ? globalThis : this);
 var console = { log: function() { var txt = Array.prototype.slice.call(arguments).join(' '); var st=''; try{ st=(new Error()).stack || (new Error()).toString(); }catch(e){} if (typeof __rfox_console_log === 'function') { try{ __rfox_console_log(txt, st); }catch(e){} } else { __rfox_console.push(txt); } }, error: function() { var txt = Array.prototype.slice.call(arguments).join(' '); var st=''; try{ st=(new Error()).stack || (new Error()).toString(); }catch(e){} if (typeof __rfox_console_error === 'function') { try{ __rfox_console_error(txt, st); }catch(e){} } else { __rfox_console.push(txt); } } };
 
 // Microtask & macrotask (timer) support for M1
