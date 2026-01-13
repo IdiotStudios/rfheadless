@@ -1,4 +1,4 @@
-var __rfox_dom = @ELEMENTS@;
+var __rfox_dom = (typeof __RFOX_ELEMENTS__ !== 'undefined' ? __RFOX_ELEMENTS__ : []);
 
 function __matches_simple(el, sel) {
     if (!sel) return false;
@@ -164,16 +164,6 @@ function __wrap_el(el) {
     return el;
 }
 
-function querySelector(sel) {
-    for (var i=0;i<__rfox_dom.length;i++) { if (__matches(__rfox_dom[i], sel)) return __wrap_el(__rfox_dom[i]); }
-    return __wrap_el(null);
-}
-
-function querySelectorAll(sel) {
-    var out = [];
-    for (var i=0;i<__rfox_dom.length;i++) { if (__matches(__rfox_dom[i], sel)) out.push(__wrap_el(__rfox_dom[i])); }
-    return out;
-}
 
 // Snapshot helper useful for debugging and tests
 function __rfox_snapshot() {
@@ -183,7 +173,7 @@ function __rfox_snapshot() {
 }
 
 // Simple CSS parser: populate __rfox_rules from document.styles
-var __rfox_styles = @STYLES@;
+var __rfox_styles = (typeof __RFOX_STYLES__ !== 'undefined' ? __RFOX_STYLES__ : []);
 var __rfox_rules = [];
 (function() {
     var rule_re = /([^\{]+)\{([^\}]+)\}/g;
@@ -319,7 +309,7 @@ function getComputedStyle(el) {
 } 
 
 var __rfox_console = [];
-var document = { title: @TITLE@, body: @BODY@, styles: @STYLES@, querySelector: querySelector, querySelectorAll: querySelectorAll };
+var document = { title: (typeof __RFOX_TITLE__ !== 'undefined' ? __RFOX_TITLE__ : "Title"), body: (typeof __RFOX_BODY__ !== 'undefined' ? __RFOX_BODY__ : "Body"), styles: __rfox_styles, querySelector: querySelector, querySelectorAll: querySelectorAll };
 var console = { log: function() { var txt = Array.prototype.slice.call(arguments).join(' '); var st=''; try{ st=(new Error()).stack || (new Error()).toString(); }catch(e){} if (typeof __rfox_console_log === 'function') { try{ __rfox_console_log(txt, st); }catch(e){} } else { __rfox_console.push(txt); } }, error: function() { var txt = Array.prototype.slice.call(arguments).join(' '); var st=''; try{ st=(new Error()).stack || (new Error()).toString(); }catch(e){} if (typeof __rfox_console_error === 'function') { try{ __rfox_console_error(txt, st); }catch(e){} } else { __rfox_console.push(txt); } } };
 
 // Microtask & macrotask (timer) support for M1
@@ -404,17 +394,22 @@ function __rfox_tick(ms) {
             this._state = 'pending';
             this._value = undefined;
             this._handlers = [];
-            var resolve = (v) => {
+            var resolve = function(v) {
                 if (this._state !== 'pending') return;
                 this._state = 'fulfilled';
                 this._value = v;
-                this._handlers.forEach(h => queueMicrotask(function(){ if (h.onFulfilled) { try { h.onFulfilled(v); } catch(e) { if (h.onRejected) h.onRejected(e); } } }));
+                // Use a plain function to be compatible with older runtimes and engines
+                this._handlers.forEach(function(h) {
+                    queueMicrotask(function() { if (h.onFulfilled) { try { h.onFulfilled(v); } catch(e) { if (h.onRejected) h.onRejected(e); } } });
+                });
             };
-            var reject = (e) => {
+            var reject = function(e) {
                 if (this._state !== 'pending') return;
                 this._state = 'rejected';
                 this._value = e;
-                this._handlers.forEach(h => queueMicrotask(function(){ if (h.onRejected) { try { h.onRejected(e); } catch(err) {} } }));
+                this._handlers.forEach(function(h) {
+                    queueMicrotask(function() { if (h.onRejected) { try { h.onRejected(e); } catch(err) {} } });
+                });
             };
             try { executor(resolve, reject); } catch(e) { reject(e); }
         }

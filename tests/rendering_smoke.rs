@@ -1,6 +1,6 @@
 #![cfg(feature = "rfengine")]
 
-use rfheadless::rendering::rasterize_dummy;
+use rfheadless::rendering::raster::rasterize_dummy;
 
 #[test]
 fn smoke_rasterize_dummy() {

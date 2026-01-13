@@ -1,8 +1,4 @@
-//! RFEngine: a non-Chrome engine with optional JS hook and CSS extraction
-//!
-//! This engine fetches HTML, extracts title/body and CSS (inline + linked).
-//! It also supports evaluating JavaScript against a minimal page "document" via
-//! the Boa JavaScript engine when the `rfengine` feature is enabled.
+//! RFEngine: lightweight pure-Rust backend with minimal JS and CSS extraction.
 
 
 use crate::{Engine, EngineConfig, Error, Result, ScriptResult, TextSnapshot};
@@ -27,7 +23,7 @@ struct ScriptJob {
 #[allow(clippy::type_complexity)]
 static RFOX_CONSOLE_REG: OnceLock<std::sync::Mutex<std::collections::HashMap<usize, Arc<dyn Fn(&crate::ConsoleMessage) + Send + Sync>>>> = OnceLock::new();
 
-// Spawn a worker that owns a single Boa Context and processes ScriptJob messages
+// Spawn a worker to process ScriptJob messages
 fn spawn_script_worker() -> (std::sync::mpsc::Sender<ScriptJob>, std::thread::JoinHandle<()>) {
     let (tx, rx) = std::sync::mpsc::channel::<ScriptJob>();
     let handle = std::thread::spawn(move || {
@@ -112,15 +108,14 @@ fn spawn_script_worker() -> (std::sync::mpsc::Sender<ScriptJob>, std::thread::Jo
     (tx, handle)
 }
 
-// Helper to spawn a process-backed worker using the current executable with --worker
+// Spawn process-backed worker (current exe --worker)
 fn spawn_process_worker() -> (std::sync::mpsc::Sender<ScriptJob>, std::thread::JoinHandle<()>, std::sync::Arc<std::sync::Mutex<Option<std::process::Child>>>) {
     use std::io::{BufRead, BufReader, Write};
-    use std::process::{Command, Stdio, Child};
+    use std::process::{Command, Stdio};
 
     let (tx, rx) = std::sync::mpsc::channel::<ScriptJob>();
 
-    // Spawn the child process here so we can keep the Child handle and still move
-    // stdin/stdout into the worker thread for communication.
+    // Spawn child and capture stdio for the worker thread.
     let exe = std::env::current_exe().unwrap_or_else(|_| std::path::PathBuf::from("./rfheadless"));
     let mut child = Command::new(exe).arg("--worker").stdin(Stdio::piped()).stdout(Stdio::piped()).spawn().expect("failed to spawn worker process");
 
@@ -128,7 +123,7 @@ fn spawn_process_worker() -> (std::sync::mpsc::Sender<ScriptJob>, std::thread::J
     let stdin_handle = child.stdin.take().expect("worker stdin");
     let stdout_handle = child.stdout.take().expect("worker stdout");
 
-    // Store the Child handle in an Arc<Mutex<Option<Child>>> so the engine can kill it later.
+    // Keep Child handle in Arc<Mutex<Option<_>>> so it can be killed later.
     let child_ref = std::sync::Arc::new(std::sync::Mutex::new(Some(child)));
     let child_ref_for_thread = child_ref.clone();
 
@@ -147,7 +142,7 @@ fn spawn_process_worker() -> (std::sync::mpsc::Sender<ScriptJob>, std::thread::J
             let mut line = String::new();
             if let Ok(n) = reader.read_line(&mut line) {
                 if n == 0 {
-                    // Worker closed; ensure we drop any held child handle
+                    // Worker closed: drop any held child handle
                     if let Ok(mut lock) = child_ref_for_thread.lock() {
                         if let Some(mut c) = lock.take() {
                             let _ = c.kill();
@@ -169,7 +164,7 @@ fn spawn_process_worker() -> (std::sync::mpsc::Sender<ScriptJob>, std::thread::J
             }
         }
 
-        // When the channel closes, ensure we kill the child if still present
+        // On channel close, kill child if present
         if let Ok(mut lock) = child_ref_for_thread.lock() {
             if let Some(mut c) = lock.take() {
                 let _ = c.kill();
@@ -181,7 +176,7 @@ fn spawn_process_worker() -> (std::sync::mpsc::Sender<ScriptJob>, std::thread::J
     (tx, handle, child_ref)
 }
 
-// Helper to parse file:line:col from candidate substrings like "file.js:10:15"
+// Parse "file:line:col" substrings
 fn parse_file_line_col(s: &str) -> Option<(String, u32, u32)> {
     let parts: Vec<&str> = s.rsplitn(3, ':').collect();
     if parts.len() >= 2 {
@@ -193,7 +188,7 @@ fn parse_file_line_col(s: &str) -> Option<(String, u32, u32)> {
     None
 }
 
-// Parse stack string lines to extract (source, line, column) best-effort.
+// Best-effort parse of JS stack lines (source,line,col).
 fn parse_stack_info(stack: Option<&str>) -> (Option<String>, Option<u32>, Option<u32>) {
     if let Some(s) = stack {
         for l in s.lines() {
@@ -395,7 +390,7 @@ impl Engine for RFEngine {
             let styles_array = self.styles.iter().map(|s| serde_json::to_string(s).unwrap_or("\"\"".into()).to_string()).collect::<Vec<_>>().join(",");
             let title = document.select(&Selector::parse("title").unwrap()).next().map(|n| n.text().collect::<String>()).unwrap_or_default();
             let body_text = document.select(&Selector::parse("body").unwrap()).next().map(|n| n.text().collect::<String>()).unwrap_or_default();
-            let harness = include_str!("rf_harness.js").replace("@ELEMENTS@", &elements_json).replace("@STYLES@", &format!("[{}]", styles_array)).replace("@TITLE@", &serde_json::to_string(&title).unwrap_or_else(|_| "\"\"".to_string())).replace("@BODY@", &serde_json::to_string(&body_text).unwrap_or_else(|_| "\"\"".to_string()));
+            let harness = include_str!("rf_harness.js").replace("__RFOX_ELEMENTS__", &elements_json).replace("__RFOX_STYLES__", &format!("[{}]", styles_array)).replace("__RFOX_TITLE__", &serde_json::to_string(&title).unwrap_or_else(|_| "\"\"".to_string())).replace("__RFOX_BODY__", &serde_json::to_string(&body_text).unwrap_or_else(|_| "\"\"".to_string()));
 
             let (resp_tx, resp_rx) = std::sync::mpsc::channel::<ScriptResult>();
             let job = ScriptJob { code: harness, loop_limit: self.config.script_loop_iteration_limit, recursion_limit: self.config.script_recursion_limit, on_console: self.on_console.clone(), resp: resp_tx };
@@ -455,9 +450,7 @@ impl Engine for RFEngine {
             return Err(Error::ScriptError("JavaScript is disabled in config".into()));
         }
 
-        // We use Boa to evaluate JS against a minimal "document" object and a
-        // simple console that accumulates messages which are forwarded to the
-        // registered `on_console` callback.
+        // Use Boa with a minimal `document` and console buffered to `on_console`.
         let html = self
             .last_html
             .as_ref()
@@ -533,10 +526,10 @@ impl Engine for RFEngine {
 
         // Inject harness from external template and substitute tokens
         let harness = include_str!("rf_harness.js")
-            .replace("@ELEMENTS@", &elements_json)
-            .replace("@STYLES@", &format!("[{}]", styles_array))
-            .replace("@TITLE@", &serde_json::to_string(&title).unwrap_or_else(|_| "\"\"".to_string()))
-            .replace("@BODY@", &serde_json::to_string(&body_text).unwrap_or_else(|_| "\"\"".to_string()));
+            .replace("__RFOX_ELEMENTS__", &elements_json)
+            .replace("__RFOX_STYLES__", &format!("[{}]", styles_array))
+            .replace("__RFOX_TITLE__", &serde_json::to_string(&title).unwrap_or_else(|_| "\"\"".to_string()))
+            .replace("__RFOX_BODY__", &serde_json::to_string(&body_text).unwrap_or_else(|_| "\"\"".to_string()));
 
 
         use std::collections::HashMap;
@@ -616,6 +609,10 @@ impl Engine for RFEngine {
                     let _ = ctx.register_global_builtin_callable(boa_engine::js_string!("__rfox_console_log"), 0usize, nf);
                     let nf2 = boa_engine::native_function::NativeFunction::from_fn_ptr(rfox_console_native as boa_engine::native_function::NativeFunctionPointer);
                     let _ = ctx.register_global_builtin_callable(boa_engine::js_string!("__rfox_console_error"), 0usize, nf2);
+                    // Register callback in the console registry to enable native forwarding
+                    if let Ok(mut lock) = map.lock() {
+                        lock.insert(ptr, cb);
+                    }
                 }
 
                 let result = match ctx.eval(boa_engine::Source::from_bytes(code.as_bytes())) {
@@ -774,10 +771,10 @@ impl RFEngine {
             let _ = h.join();
         }
         if self.config.enable_javascript && !self.config.enable_js_isolation {
-            let (tx, h, child_ref) = if self.config.use_process_worker { let (t,h,c) = spawn_process_worker(); (t,h,Some(c)) } else { let (t,h) = spawn_script_worker(); (t,h,None) };
+            let (tx, h, _child_ref) = if self.config.use_process_worker { let (t,h,c) = spawn_process_worker(); (t,h,Some(c)) } else { let (t,h) = spawn_script_worker(); (t,h,None) };
             self.script_worker_tx = Some(tx);
             self.script_worker_handle = Some(h);
-            self.script_worker_child = child_ref;
+            self.script_worker_child = _child_ref;
         }
 
         // Replace page worker if present
@@ -819,13 +816,14 @@ impl RFEngine {
             let styles_array = self.styles.iter().map(|s| serde_json::to_string(s).unwrap_or("\"\"".into()).to_string()).collect::<Vec<_>>().join(",");
             let title = document.select(&Selector::parse("title").unwrap()).next().map(|n| n.text().collect::<String>()).unwrap_or_default();
             let body_text = document.select(&Selector::parse("body").unwrap()).next().map(|n| n.text().collect::<String>()).unwrap_or_default();
-            let harness = include_str!("rf_harness.js").replace("@ELEMENTS@", &elements_json).replace("@STYLES@", &format!("[{}]", styles_array)).replace("@TITLE@", &serde_json::to_string(&title).unwrap_or_else(|_| "\"\"".to_string())).replace("@BODY@", &serde_json::to_string(&body_text).unwrap_or_else(|_| "\"\"".to_string()));
+            let harness = include_str!("rf_harness.js").replace("__RFOX_ELEMENTS__", &elements_json).replace("__RFOX_STYLES__", &format!("[{}]", styles_array)).replace("__RFOX_TITLE__", &serde_json::to_string(&title).unwrap_or_else(|_| "\"\"".to_string())).replace("__RFOX_BODY__", &serde_json::to_string(&body_text).unwrap_or_else(|_| "\"\"".to_string()));
             let (resp_tx, resp_rx) = std::sync::mpsc::channel::<ScriptResult>();
             let job = ScriptJob { code: harness, loop_limit: self.config.script_loop_iteration_limit, recursion_limit: self.config.script_recursion_limit, on_console: self.on_console.clone(), resp: resp_tx };
             let _ = tx.send(job);
             let _ = resp_rx.recv_timeout(std::time::Duration::from_millis(self.config.script_timeout_ms));
             self.page_worker_tx = Some(tx);
             self.page_worker_handle = Some(h);
+            self.page_worker_child = child_ref;
         }
         Ok(())
     }

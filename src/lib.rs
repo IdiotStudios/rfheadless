@@ -50,6 +50,9 @@ pub mod rfengine;
 #[cfg(feature = "rfengine")]
 pub mod rendering;
 
+// Platform API surface (service workers, media hooks, accessibility, device emulation)
+pub mod platform;
+
 // Async-friendly browser API (simple worker-backed abstraction)
 #[cfg(feature = "cdp")]
 pub mod async_api;

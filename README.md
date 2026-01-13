@@ -12,7 +12,7 @@ A headless browsing engine API for Rust providing a compact, testable, and deter
 
 ---
 
-## Quick start
+## Quick start (FYI I have not tested this yet)
 
 ```rust
 use rfheadless::{Engine, EngineConfig};
