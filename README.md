@@ -58,10 +58,10 @@ High-level goals (subject to change):
 
 ## Scope & Boundaries
 
-**(current focus):**
-- Full, pixel-accurate rendering equivalent to Chromium (phase 1: simplified layout & paint pipeline focusing on flow layout, box model, reflow, and basic rasterization).
-- Complete Web platform APIs needed for parity testing (service workers, media playback hooks, accessibility tree basics, and device emulation), implemented incrementally and gated by tests.
-- An optional CDP server surface for external tooling (a feature-gated translation façade to support integrations and Chrome-compatibility checks).
+**(current focus — prioritized):**
+- **Rendering (priority: high)** — Achieve full pixel-accurate rendering parity with Chromium. Phase 1 focuses on a simplified layout & paint pipeline (flow layout, box model, reflow, line wrapping, and basic rasterization). Deliverables: deterministic screenshot API, image golden fixtures, and cross-engine comparison tooling.
+- **Platform APIs (priority: high)** — Implement the Web platform surface required for parity tests: service workers, media playback hooks, accessibility tree basics, and device emulation. Each surface will be delivered incrementally and gated by deterministic tests and golden fixtures.
+- **CDP surface (priority: medium)** — Provide an optional, feature-gated CDP server translation façade for external tooling and Chrome-compatibility checks. Aim for a minimal surface sufficient for comparisons and CI integration, expandable over time.
 
 **(long-term):**
 - Expand and stabilize the rendering and platform stacks, add performance optimizations, implement advanced layout features (flex/grid, table layout), and harden via fuzzing and benchmarks.

@@ -46,6 +46,10 @@ pub mod simple;
 #[cfg(feature = "rfengine")]
 pub mod rfengine;
 
+// Rendering prototype (Phase 1) — feature-gated under `rfengine` for now
+#[cfg(feature = "rfengine")]
+pub mod rendering;
+
 // Async-friendly browser API (simple worker-backed abstraction)
 #[cfg(feature = "cdp")]
 pub mod async_api;
