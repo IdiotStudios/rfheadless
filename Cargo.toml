@@ -2,7 +2,7 @@
 name = "rfheadless"
 version = "0.1.0"
 edition = "2021"
-authors = ["RFox Contributors"]
+authors = ["RFox Contributors"] # Watch there be no contributors lol
 
 [[bin]]
 name = "rfheadless"
