@@ -1,0 +1,95 @@
+---
+---
+@import "minima";
+
+/* Custom rfheadless styles */
+:root {
+  --accent: #0f62fe;
+  --accent-2: #7c3aed;
+  --muted: #6b6b6b;
+  --content-width: 980px;
+}
+
+/* Header tweaks */
+.site-header {
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  color: white;
+  box-shadow: 0 2px 8px rgba(12, 16, 36, 0.08);
+  padding: 1rem 0.75rem;
+}
+
+.site-title a {
+  color: #fff !important;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.site-header .site-title::before {
+  content: "";
+  display: inline-block;
+  vertical-align: middle;
+  width: 36px;
+  height: 36px;
+  margin-right: 0.5rem;
+  background-image: url('/assets/images/logo.svg');
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+
+.site-nav a {
+  color: rgba(255,255,255,0.95) !important;
+}
+
+/* Limit content width for readability */
+.wrapper {
+  max-width: var(--content-width);
+}
+
+/* Make code blocks more readable */
+.highlight pre, pre {
+  background: #0f1724;
+  color: #e6eef8;
+  border-radius: 6px;
+  padding: 0.9rem 1rem;
+  overflow: auto;
+  font-size: 0.92rem;
+}
+
+/* Inline code */
+code {
+  background: rgba(16, 24, 40, 0.05);
+  border-radius: 4px;
+  padding: 0.15rem 0.35rem;
+  font-size: 0.95em;
+}
+
+/* Tables */
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th, td {
+  border: 1px solid rgba(15, 20, 36, 0.06);
+  padding: 0.5rem 0.75rem;
+}
+
+th {
+  background: rgba(12, 16, 36, 0.02);
+  text-align: left;
+}
+
+/* Callouts */
+.callout {
+  border-left: 4px solid var(--accent);
+  padding: 0.6rem 0.8rem;
+  background: rgba(15, 98, 254, 0.03);
+  margin-bottom: 1rem;
+}
+
+/* Footer tweaks */
+.site-footer {
+  border-top: 1px solid rgba(12,16,36,0.06);
+  padding-top: 1rem;
+  margin-top: 2rem;
+}
