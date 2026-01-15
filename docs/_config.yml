@@ -1,6 +1,0 @@
-title: rfheadless
-theme: minima
-# Keep baseurl empty for GitHub Pages hosted at repo root
-baseurl: ""
-markdown: kramdown
-permalink: /:path/
