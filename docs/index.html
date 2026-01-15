@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>rfheadless docs</title>
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrapper">
+      <div class="site-title"><a href="/">rfheadless</a></div>
+      <nav class="site-nav" id="nav"></nav>
+    </div>
+  </header>
+
+  <main class="wrapper">
+    <article id="content" class="doc-content">
+      <h1>rfheadless</h1>
+      <p>Welcome to the rfheadless documentation. Use the left navigation to browse pages.</p>
+    </article>
+  </main>
+
+  <footer class="site-footer wrapper">
+    <small>© rfheadless — docs generated from repository Markdown</small>
+  </footer>
+
+  <script src="assets/vendor/marked.min.js"></script>
+  <script src="assets/vendor/dompurify.min.js"></script>
+  <script>
+    // Simple SPA that loads markdown pages listed in docs/docs.json
+    async function loadIndex() {
+      const res = await fetch('docs.json');
+      const pages = await res.json();
+      const nav = document.getElementById('nav');
+      pages.forEach(p => {
+        const a = document.createElement('a');
+        a.href = '#/' + p.path;
+        a.textContent = p.title;
+        a.addEventListener('click', (e) => { e.preventDefault(); navigate(p.path); });
+        nav.appendChild(a);
+      });
+    }
+
+    async function navigate(path, push=true) {
+      const content = document.getElementById('content');
+      content.innerHTML = '<p>Loading…</p>';
+      try {
+        // fetch the markdown file from the server
+        const mdRes = await fetch('' + path);
+        if (!mdRes.ok) { content.innerHTML = '<p>Page not found</p>'; return; }
+        const md = await mdRes.text();
+        // convert to HTML using marked, sanitize output
+        const rawHtml = marked.parse(md);
+        const safeHtml = DOMPurify.sanitize(rawHtml);
+        content.innerHTML = safeHtml;
+        if (push) history.pushState({path}, '', '#/' + path);
+        // optionally scroll to top
+        window.scrollTo(0,0);
+      } catch (e) {
+        content.innerHTML = '<p>Failed to load page</p>';
+        console.error(e);
+      }
+    }
+
+    window.addEventListener('popstate', (ev) => {
+      const state = ev.state;
+      if (state && state.path) navigate(state.path, false);
+      else {
+        document.getElementById('content').innerHTML = '<h1>rfheadless</h1><p>Welcome to the rfheadless documentation. Use the navigation to browse pages.</p>';
+      }
+    });
+
+    // On load: build nav and load initial page if present in hash
+    (async function(){ await loadIndex();
+      const hash = location.hash.replace('#/','');
+      if (hash) navigate(hash, false);
+    })();
+  </script>
+</body>
+</html>
