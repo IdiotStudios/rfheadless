@@ -1,7 +1,3 @@
----
-title: Rendering primitives
----
-
 # Rendering primitives
 
 The crate contains a Phase 1 rendering prototype with simple primitives used by tests and goldens.

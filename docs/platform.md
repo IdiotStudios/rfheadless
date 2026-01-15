@@ -1,7 +1,3 @@
----
-title: Platform API
----
-
 # Platform API (service workers, media, accessibility, device)
 
 This repository exposes simple trait-based primitives for deterministic tests and backends.

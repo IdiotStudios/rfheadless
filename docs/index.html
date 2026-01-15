@@ -8,18 +8,22 @@
 </head>
 <body>
   <header class="site-header">
-    <div class="wrapper">
-      <div class="site-title"><a href="/">rfheadless</a></div>
-      <nav class="site-nav" id="nav"></nav>
+    <div class="wrapper header-row">
+      <button id="sidebar-toggle" class="sidebar-toggle" aria-label="Toggle sidebar">☰</button>
+      <div class="site-title"><a href="#/">rfheadless</a></div>
     </div>
   </header>
 
-  <main class="wrapper">
-    <article id="content" class="doc-content">
+  <div class="docs-layout">
+    <aside class="sidebar" id="sidebar" aria-label="Documentation navigation">
+      <nav id="nav"></nav>
+    </aside>
+
+    <main class="content" id="content">
       <h1>rfheadless</h1>
-      <p>Welcome to the rfheadless documentation. Use the left navigation to browse pages.</p>
-    </article>
-  </main>
+      <p>Welcome to the rfheadless documentation. Use the navigation to browse pages.</p>
+    </main>
+  </div>
 
   <footer class="site-footer wrapper">
     <small>© rfheadless — docs generated from repository Markdown</small>
@@ -28,17 +32,70 @@
   <script src="assets/vendor/marked.min.js"></script>
   <script src="assets/vendor/dompurify.min.js"></script>
   <script>
-    // Simple SPA that loads markdown pages listed in docs/docs.json
+    // Simple SPA that loads markdown pages listed in docs/docs.json and builds a nested nav
+    function makeLink(title, path) {
+      const a = document.createElement('a');
+      a.href = '#/' + path;
+      a.className = 'nav-link';
+      a.textContent = title;
+      a.addEventListener('click', (e) => { e.preventDefault(); navigate(path); });
+      a.dataset.path = path;
+      return a;
+    }
+
+    function makeSection(section) {
+      const div = document.createElement('div');
+      div.className = 'nav-section';
+      const header = document.createElement('div');
+      header.className = 'nav-section-header';
+      const title = document.createElement('span');
+      title.textContent = section.title;
+      header.appendChild(title);
+      const toggle = document.createElement('button');
+      toggle.className = 'nav-toggle';
+      toggle.setAttribute('aria-expanded','true');
+      toggle.innerHTML = '▾';
+      header.appendChild(toggle);
+      div.appendChild(header);
+
+      const ul = document.createElement('ul');
+      ul.className = 'nav-sub';
+      (section.children || []).forEach(child => {
+        const li = document.createElement('li');
+        li.appendChild(makeLink(child.title, child.path));
+        ul.appendChild(li);
+      });
+      div.appendChild(ul);
+
+      toggle.addEventListener('click', () => {
+        const expanded = toggle.getAttribute('aria-expanded') === 'true';
+        toggle.setAttribute('aria-expanded', String(!expanded));
+        ul.style.display = expanded ? 'none' : 'block';
+        toggle.innerHTML = expanded ? '▸' : '▾';
+      });
+
+      return div;
+    }
+
     async function loadIndex() {
-      const res = await fetch('docs.json');
+      const res = await fetch('./docs.json');
       const pages = await res.json();
       const nav = document.getElementById('nav');
       pages.forEach(p => {
-        const a = document.createElement('a');
-        a.href = '#/' + p.path;
-        a.textContent = p.title;
-        a.addEventListener('click', (e) => { e.preventDefault(); navigate(p.path); });
-        nav.appendChild(a);
+        if (p.children) {
+          nav.appendChild(makeSection(p));
+        } else {
+          const div = document.createElement('div');
+          div.className = 'nav-item';
+          div.appendChild(makeLink(p.title, p.path));
+          nav.appendChild(div);
+        }
+      });
+    }
+
+    function setActive(path) {
+      document.querySelectorAll('.nav-link').forEach(n => {
+        if (n.dataset.path === path) n.classList.add('active'); else n.classList.remove('active');
       });
     }
 
@@ -46,17 +103,17 @@
       const content = document.getElementById('content');
       content.innerHTML = '<p>Loading…</p>';
       try {
-        // fetch the markdown file from the server
-        const mdRes = await fetch('' + path);
+        const mdRes = await fetch(path);
         if (!mdRes.ok) { content.innerHTML = '<p>Page not found</p>'; return; }
         const md = await mdRes.text();
-        // convert to HTML using marked, sanitize output
         const rawHtml = marked.parse(md);
         const safeHtml = DOMPurify.sanitize(rawHtml);
         content.innerHTML = safeHtml;
+        setActive(path);
         if (push) history.pushState({path}, '', '#/' + path);
-        // optionally scroll to top
         window.scrollTo(0,0);
+        // on small screens hide sidebar
+        if (window.innerWidth < 900) document.getElementById('sidebar').classList.remove('open');
       } catch (e) {
         content.innerHTML = '<p>Failed to load page</p>';
         console.error(e);
@@ -69,6 +126,10 @@
       else {
         document.getElementById('content').innerHTML = '<h1>rfheadless</h1><p>Welcome to the rfheadless documentation. Use the navigation to browse pages.</p>';
       }
+    });
+
+    document.getElementById('sidebar-toggle').addEventListener('click', () => {
+      document.getElementById('sidebar').classList.toggle('open');
     });
 
     // On load: build nav and load initial page if present in hash

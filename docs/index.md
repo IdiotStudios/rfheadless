@@ -1,7 +1,3 @@
----
-title: rfheadless Documentation
----
-
 # rfheadless — Documentation
 
 Welcome to the rfheadless docs. This repository provides a headless browsing engine API for Rust. Use the links below for quick orientation:

@@ -1,10 +1,36 @@
 /* Compiled site stylesheet (simple, designed to complement minima) */
-:root{--accent:#0f62fe;--accent-2:#7c3aed;--muted:#6b6b6b;--content-width:980px}
+:root{--accent:#b515ff;--accent-2:#7c3aed;--muted:#6b6b6b;--content-width:980px}
 body{font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,'Noto Sans',sans-serif;margin:0;color:#0c1024;background:#fff}
 .wrapper{max-width:var(--content-width);margin:0 auto;padding:1rem}
 .site-header{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff;padding:1rem 0}
+.header-row{display:flex;align-items:center;gap:1rem}
+.sidebar-toggle{background:transparent;border:0;color:#fff;font-size:1.25rem;cursor:pointer}
 .site-title{font-weight:700;font-size:1.25rem}
 .site-title a{color:#fff;text-decoration:none}
+
+/* Layout: sidebar + content */
+.docs-layout{display:flex;gap:1rem;align-items:flex-start}
+.sidebar{width:260px;flex:0 0 260px;background:#fbfbff;border-right:1px solid rgba(12,16,36,.04);padding:1rem;height:calc(100vh - 120px);overflow:auto;position:sticky;top:80px}
+.sidebar .nav-item{margin-bottom:0.5rem}
+.nav-link{display:block;color:#0c1024;padding:0.25rem 0;text-decoration:none}
+.nav-link.active{font-weight:700;color:var(--accent)}
+.nav-section{margin-bottom:0.75rem}
+.nav-section-header{display:flex;justify-content:space-between;align-items:center;padding:0.15rem 0}
+.nav-toggle{background:transparent;border:0;cursor:pointer;color:var(--muted)}
+.nav-sub{list-style:none;margin:0;padding:0 0 0.5rem 0}
+.nav-sub li{padding-left:0.5rem;margin-bottom:0.25rem}
+
+.content{flex:1;padding:1.25rem 1rem}
+
+/* small screen: sidebar collapses */
+@media (max-width:900px){
+  .docs-layout{flex-direction:column}
+  .sidebar{position:fixed;left:0;top:0;height:100vh;z-index:40;transform:translateX(-110%);transition:transform .2s ease;background:#fff}
+  .sidebar.open{transform:translateX(0);box-shadow:2px 0 14px rgba(12,16,36,.08)}
+  .content{padding-top:1rem}
+}
+
+/* reuse existing rules */
 .site-nav{margin-top:.5rem}
 .site-nav a{margin-right:1rem;color:rgba(255,255,255,.95);text-decoration:none}
 .doc-content{padding:1.25rem 0}

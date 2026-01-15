@@ -1,7 +1,3 @@
----
-title: Contributing
----
-
 # Contributing
 
 Thanks for wanting to contribute! A few guidelines to keep the project tidy:

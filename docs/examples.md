@@ -1,7 +1,3 @@
----
-title: Examples & benches
----
-
 # Examples & benches
 
 This repo contains small examples and benches to demonstrate usage and measure performance.

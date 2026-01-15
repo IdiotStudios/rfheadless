@@ -1,7 +1,3 @@
----
-title: Development
----
-
 # Development
 
 - Run tests: `cargo test`
