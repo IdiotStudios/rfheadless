@@ -39,7 +39,7 @@ boa_engine = { version = "0.20", optional = true }
 url = { version = "2", optional = true }
 
 # CDP backend (feature-gated)
-headless_chrome = { git = "https://github.com/rust-headless-chrome/rust-headless-chrome", optional = true }
+headless_chrome = { git = "https://github.com/rust-headless-chrome/rust-headless-chrome", optional = true, version = "1.0.20" }
 
 # Deterministic test helpers (used by rendering/golden tests)
 sha2 = "0.10"
