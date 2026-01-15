@@ -2,7 +2,7 @@
 
 1. Clone the repo
 
-   git clone https://github.com/idiotstudios/rfheadless.git
+   git clone <a href="https://github.com/idiotstudios/rfheadless.git">https://github.com/idiotstudios/rfheadless.git</a>
 
 2. Build
 

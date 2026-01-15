@@ -1,7 +1,3 @@
----
-title: Engine API
----
-
 # Engine API
 
 This page documents the public `Engine` trait and high-level usage patterns.

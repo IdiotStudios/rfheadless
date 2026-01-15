@@ -1,7 +1,3 @@
----
-title: RFEngine specifics
----
-
 # RFEngine specifics (feature: `rfengine`)
 
 `RFEngine` is the pure-Rust backend included under the `rfengine` feature. Key characteristics:
