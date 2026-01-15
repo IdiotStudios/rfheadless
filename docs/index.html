@@ -16,7 +16,14 @@
 
   <div class="docs-layout">
     <aside class="sidebar" id="sidebar" aria-label="Documentation navigation">
-      <nav id="nav"></nav>
+      <div class="sidebar-header">
+        <div class="logo"><img src="assets/images/logo.png" alt="rfheadless logo"></div>
+        <div class="brand">rfheadless</div>
+      </div>
+      <div class="sidebar-search">
+        <input id="nav-search" placeholder="Filter pages…" aria-label="Filter pages" />
+      </div>
+      <nav id="nav" class="nav-list" role="navigation"></nav>
     </aside>
 
     <main class="content" id="content">
@@ -91,7 +98,34 @@
           nav.appendChild(div);
         }
       });
+      // wire up search box to filter nav
+      const search = document.getElementById('nav-search');
+      search.addEventListener('input', (e) => {
+        const q = e.target.value.trim().toLowerCase();
+        filterNav(q);
+      });
+
+      // keyboard shortcut: press '/' to focus search
+      window.addEventListener('keydown', (ev) => {
+        if (ev.key === '/' && document.activeElement.tagName !== 'INPUT') {
+          ev.preventDefault();
+          document.getElementById('nav-search').focus();
+        }
+      });
     }
+
+    function filterNav(q) {
+      document.querySelectorAll('.nav-item, .nav-section').forEach(el => {
+        if (el.classList.contains('nav-section')) {
+          // hide entire section if none of its children match
+          const sub = Array.from(el.querySelectorAll('.nav-link'));
+          const matched = sub.some(a => a.textContent.toLowerCase().includes(q));
+          el.style.display = matched ? '' : 'none';
+        } else {
+          const a = el.querySelector('.nav-link');
+          if (a) el.style.display = a.textContent.toLowerCase().includes(q) ? '' : 'none';
+        }
+      });    }
 
     function setActive(path) {
       document.querySelectorAll('.nav-link').forEach(n => {
