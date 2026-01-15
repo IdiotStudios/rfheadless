@@ -14,10 +14,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut engine = rfheadless::new_engine(config)?;
 
     // Test with multiple URLs
-    let urls = vec![
-        "https://example.com",
-        "https://www.rust-lang.org",
-    ];
+    let urls = vec!["https://example.com", "https://www.rust-lang.org"];
 
     for url in urls {
         println!("Processing: {}", url);

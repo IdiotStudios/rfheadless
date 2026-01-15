@@ -21,7 +21,11 @@ fn start_test_server() -> String {
                     let _ = request.respond(resp);
                 } else {
                     let resp = Response::from_string("<html><head></head><body></body></html>")
-                        .with_header("Content-Type: text/html".parse::<tiny_http::Header>().unwrap());
+                        .with_header(
+                            "Content-Type: text/html"
+                                .parse::<tiny_http::Header>()
+                                .unwrap(),
+                        );
                     let _ = request.respond(resp);
                 }
             }
@@ -44,8 +48,15 @@ fn test_fulfill_request() {
     engine.on_request(|req| {
         if req.url.ends_with("/script.js") {
             let mut headers = std::collections::HashMap::new();
-            headers.insert("Content-Type".to_string(), "application/javascript".to_string());
-            RequestAction::Fulfill { status: 200, headers, body: b"console.log('injected');".to_vec() }
+            headers.insert(
+                "Content-Type".to_string(),
+                "application/javascript".to_string(),
+            );
+            RequestAction::Fulfill {
+                status: 200,
+                headers,
+                body: b"console.log('injected');".to_vec(),
+            }
         } else {
             RequestAction::Continue
         }

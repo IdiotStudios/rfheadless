@@ -2,20 +2,21 @@
 
 use crate::{Engine, EngineConfig, Error, Result, ScriptResult, TextSnapshot};
 use headless_chrome::browser::tab::Tab;
-use headless_chrome::protocol::cdp::Page;
-use headless_chrome::browser::tab::{RequestPausedDecision, RequestInterceptor};
+use headless_chrome::browser::tab::{RequestInterceptor, RequestPausedDecision};
 use headless_chrome::protocol::cdp::Fetch::events::RequestPausedEvent;
 use headless_chrome::protocol::cdp::Fetch::{FulfillRequest, HeaderEntry};
+use headless_chrome::protocol::cdp::Page;
 use log::warn;
 
 // Type aliases to simplify complex handler types
 type OnLoadHandler = std::sync::Arc<dyn Fn(&crate::TextSnapshot) + Send + Sync>;
 type OnConsoleHandler = std::sync::Arc<dyn Fn(&crate::ConsoleMessage) + Send + Sync>;
-type OnRequestHandler = std::sync::Arc<dyn Fn(&crate::RequestInfo) -> crate::RequestAction + Send + Sync>;
+type OnRequestHandler =
+    std::sync::Arc<dyn Fn(&crate::RequestInfo) -> crate::RequestAction + Send + Sync>;
+use base64::Engine as Base64Engine;
 use headless_chrome::{Browser, LaunchOptions};
 use std::sync::Arc;
 use std::time::Duration;
-use base64::Engine as Base64Engine;
 
 /// CDP-based headless engine implementation (uses the `headless_chrome` crate)
 ///
@@ -37,16 +38,29 @@ impl Engine for CdpEngine {
     where
         Self: Sized,
     {
-        // Configure headless Chrome launch options
-        let launch_options = LaunchOptions::default_builder()
-            .headless(true)
-            .window_size(Some((config.viewport.width, config.viewport.height)))
-            .build()
-            .map_err(|e| Error::InitializationError(format!("Failed to build launch options: {}", e)))?;
+        // If provided, connect to an existing browser via WebSocket URL instead of launching one.
+        let browser = if let Some(ws) = config.cdp_ws_url.as_ref() {
+            Browser::connect(ws.to_string()).map_err(|e| {
+                Error::InitializationError(format!("Failed to connect to browser at {}: {}", ws, e))
+            })?
+        } else {
+            // Configure headless Chrome launch options and optionally override the executable path
+            let mut base_builder = LaunchOptions::default_builder();
+            let mut builder = base_builder
+                .headless(true)
+                .window_size(Some((config.viewport.width, config.viewport.height)));
+            if let Some(path) = config.cdp_chrome_executable.as_ref() {
+                builder = builder.path(Some(std::path::PathBuf::from(path)));
+            }
+            let launch_options = builder.build().map_err(|e| {
+                Error::InitializationError(format!("Failed to build launch options: {}", e))
+            })?;
 
-        // Launch the browser
-        let browser = Browser::new(launch_options)
-            .map_err(|e| Error::InitializationError(format!("Failed to launch browser: {}", e)))?;
+            // Launch the browser
+            Browser::new(launch_options).map_err(|e| {
+                Error::InitializationError(format!("Failed to launch browser: {}", e))
+            })?
+        };
 
         // Get the first tab
         let tab = browser
@@ -71,7 +85,8 @@ impl Engine for CdpEngine {
         }
 
         // Enable/disable JavaScript (no-op if already configured)
-        tab.enable_debugger().map_err(|e| Error::InitializationError(format!("Failed to enable debugger: {}", e)))?;
+        tab.enable_debugger()
+            .map_err(|e| Error::InitializationError(format!("Failed to enable debugger: {}", e)))?;
 
         Ok(Self {
             browser,
@@ -139,7 +154,11 @@ impl Engine for CdpEngine {
                     val.to_string()
                 }
             }
-            None => return Err(Error::RenderError("No value returned from evaluation".into())),
+            None => {
+                return Err(Error::RenderError(
+                    "No value returned from evaluation".into(),
+                ))
+            }
         };
 
         Ok(TextSnapshot { title, text, url })
@@ -156,7 +175,9 @@ impl Engine for CdpEngine {
 
     fn evaluate_script(&mut self, script: &str) -> Result<ScriptResult> {
         if !self.config.enable_javascript {
-            return Err(Error::ScriptError("JavaScript execution is disabled in the engine config".into()));
+            return Err(Error::ScriptError(
+                "JavaScript execution is disabled in the engine config".into(),
+            ));
         }
 
         // If JS isolation is enabled, run the script inside a sandboxed iframe
@@ -202,7 +223,9 @@ impl Engine for CdpEngine {
                 .evaluate(&wrapper, true)
                 .map_err(|e| Error::ScriptError(format!("Island evaluation failed: {}", e)))?;
 
-            let val = eval_res.value.ok_or_else(|| Error::ScriptError("No value returned from isolated evaluation".into()))?;
+            let val = eval_res.value.ok_or_else(|| {
+                Error::ScriptError("No value returned from isolated evaluation".into())
+            })?;
 
             // The iframe now posts a JSON string which is returned as a string value
             // from CDP; try to parse it into a JSON value for robust processing.
@@ -218,14 +241,23 @@ impl Engine for CdpEngine {
 
             // The parsed value should be an object with either 'result' or 'error'.
             if parsed.get("error").is_some() {
-                return Ok(ScriptResult { value: parsed.get("error").unwrap().to_string(), is_error: true });
+                return Ok(ScriptResult {
+                    value: parsed.get("error").unwrap().to_string(),
+                    is_error: true,
+                });
             }
 
             if parsed.get("result").is_some() {
-                return Ok(ScriptResult { value: parsed.get("result").unwrap().to_string(), is_error: false });
+                return Ok(ScriptResult {
+                    value: parsed.get("result").unwrap().to_string(),
+                    is_error: false,
+                });
             }
 
-            return Ok(ScriptResult { value: parsed.to_string(), is_error: false });
+            return Ok(ScriptResult {
+                value: parsed.to_string(),
+                is_error: false,
+            });
         }
 
         // Fall back to direct evaluation
@@ -249,7 +281,9 @@ impl Engine for CdpEngine {
     /// DOM properties such as `document.title`. This ignores `enable_js_isolation`.
     fn evaluate_script_in_page(&mut self, script: &str) -> Result<ScriptResult> {
         if !self.config.enable_javascript {
-            return Err(Error::ScriptError("JavaScript execution is disabled in the engine config".into()));
+            return Err(Error::ScriptError(
+                "JavaScript execution is disabled in the engine config".into(),
+            ));
         }
 
         let result = self
@@ -262,7 +296,10 @@ impl Engine for CdpEngine {
             .map(|v| v.to_string())
             .unwrap_or_else(|| "null".to_string());
 
-        Ok(ScriptResult { value, is_error: false })
+        Ok(ScriptResult {
+            value,
+            is_error: false,
+        })
     }
 
     fn on_load<F>(&mut self, cb: F)
@@ -290,42 +327,55 @@ impl Engine for CdpEngine {
         // to the registered Rust callback.
         let _ = self
             .tab
-            .expose_function(&binding_name, std::sync::Arc::new(move |payload: serde_json::Value| {
-                // payload may be a JSON string
-                let msg = if payload.is_string() {
-                    let s = payload.as_str().unwrap_or("");
-                    match serde_json::from_str::<serde_json::Value>(s) {
-                        Ok(v) => v,
-                        Err(_) => serde_json::Value::String(s.to_string()),
-                    }
-                } else {
-                    payload
-                };
-
-                // Extract level and args
-                if let Some(level) = msg.get("level") {
-                    let level = level.as_str().unwrap_or("").to_string();
-                    let text = match msg.get("args") {
-                        Some(args) => {
-                            if args.is_array() {
-                                args
-                                    .as_array()
-                                    .unwrap()
-                                    .iter()
-                                    .map(|v| v.as_str().map(|s| s.to_string()).unwrap_or_else(|| v.to_string()))
-                                    .collect::<Vec<_>>()
-                                    .join(" ")
-                            } else {
-                                args.to_string()
-                            }
+            .expose_function(
+                &binding_name,
+                std::sync::Arc::new(move |payload: serde_json::Value| {
+                    // payload may be a JSON string
+                    let msg = if payload.is_string() {
+                        let s = payload.as_str().unwrap_or("");
+                        match serde_json::from_str::<serde_json::Value>(s) {
+                            Ok(v) => v,
+                            Err(_) => serde_json::Value::String(s.to_string()),
                         }
-                        None => String::new(),
+                    } else {
+                        payload
                     };
 
-                    let cm = crate::ConsoleMessage { level, text, source: None, line: None, column: None, stack: None };
-                    (handler_arc)(&cm);
-                }
-            }))
+                    // Extract level and args
+                    if let Some(level) = msg.get("level") {
+                        let level = level.as_str().unwrap_or("").to_string();
+                        let text = match msg.get("args") {
+                            Some(args) => {
+                                if args.is_array() {
+                                    args.as_array()
+                                        .unwrap()
+                                        .iter()
+                                        .map(|v| {
+                                            v.as_str()
+                                                .map(|s| s.to_string())
+                                                .unwrap_or_else(|| v.to_string())
+                                        })
+                                        .collect::<Vec<_>>()
+                                        .join(" ")
+                                } else {
+                                    args.to_string()
+                                }
+                            }
+                            None => String::new(),
+                        };
+
+                        let cm = crate::ConsoleMessage {
+                            level,
+                            text,
+                            source: None,
+                            line: None,
+                            column: None,
+                            stack: None,
+                        };
+                        (handler_arc)(&cm);
+                    }
+                }),
+            )
             .map_err(|e| warn!("Failed to expose console binding: {}", e))
             .ok();
         // Inject a small script that wraps console methods to post messages to the binding
@@ -398,8 +448,12 @@ impl Engine for CdpEngine {
                         // expose protocol enum to users for precise control.
                         warn!("on_request requested Fail('{}') but failing is not implemented; continuing", error_reason);
                         RequestPausedDecision::Continue(None)
-                    },
-                    crate::RequestAction::Fulfill { status, headers, body } => {
+                    }
+                    crate::RequestAction::Fulfill {
+                        status,
+                        headers,
+                        body,
+                    } => {
                         let header_entries = headers
                             .into_iter()
                             .map(|(k, v)| HeaderEntry { name: k, value: v })
@@ -435,7 +489,10 @@ impl Engine for CdpEngine {
     }
 
     fn get_cookies(&self) -> Result<Vec<crate::Cookie>> {
-        let cookies = self.tab.get_cookies().map_err(|e| Error::Other(format!("Failed to get cookies: {}", e)))?;
+        let cookies = self
+            .tab
+            .get_cookies()
+            .map_err(|e| Error::Other(format!("Failed to get cookies: {}", e)))?;
         let mapped = cookies
             .into_iter()
             .map(|c| crate::Cookie {
@@ -466,9 +523,15 @@ impl Engine for CdpEngine {
                 secure: c.secure,
                 http_only: c.http_only,
                 same_site: c.same_site.and_then(|s| match s.as_str() {
-                    "Strict" | "strict" => Some(headless_chrome::protocol::cdp::Network::CookieSameSite::Strict),
-                    "Lax" | "lax" => Some(headless_chrome::protocol::cdp::Network::CookieSameSite::Lax),
-                    "None" | "none" => Some(headless_chrome::protocol::cdp::Network::CookieSameSite::None),
+                    "Strict" | "strict" => {
+                        Some(headless_chrome::protocol::cdp::Network::CookieSameSite::Strict)
+                    }
+                    "Lax" | "lax" => {
+                        Some(headless_chrome::protocol::cdp::Network::CookieSameSite::Lax)
+                    }
+                    "None" | "none" => {
+                        Some(headless_chrome::protocol::cdp::Network::CookieSameSite::None)
+                    }
                     _ => None,
                 }),
                 expires: c.expires.map(|v| v as f64),
@@ -480,11 +543,19 @@ impl Engine for CdpEngine {
             })
             .collect();
 
-        self.tab.set_cookies(net_cookies).map_err(|e| Error::Other(format!("Failed to set cookies: {}", e)))?;
+        self.tab
+            .set_cookies(net_cookies)
+            .map_err(|e| Error::Other(format!("Failed to set cookies: {}", e)))?;
         Ok(())
     }
 
-    fn delete_cookie(&mut self, name: &str, url: Option<&str>, domain: Option<&str>, path: Option<&str>) -> Result<()> {
+    fn delete_cookie(
+        &mut self,
+        name: &str,
+        url: Option<&str>,
+        domain: Option<&str>,
+        path: Option<&str>,
+    ) -> Result<()> {
         use headless_chrome::protocol::cdp::Network::DeleteCookies as NetDelete;
         let nc = NetDelete {
             name: name.to_string(),
@@ -493,13 +564,18 @@ impl Engine for CdpEngine {
             path: path.map(|s| s.to_string()),
             partition_key: None,
         };
-        self.tab.delete_cookies(vec![nc]).map_err(|e| Error::Other(format!("Failed to delete cookie: {}", e)))?;
+        self.tab
+            .delete_cookies(vec![nc])
+            .map_err(|e| Error::Other(format!("Failed to delete cookie: {}", e)))?;
         Ok(())
     }
 
     fn clear_cookies(&mut self) -> Result<()> {
         // Delete each cookie returned by get_cookies
-        let cookies = self.tab.get_cookies().map_err(|e| Error::Other(format!("Failed to get cookies for clearing: {}", e)))?;
+        let cookies = self
+            .tab
+            .get_cookies()
+            .map_err(|e| Error::Other(format!("Failed to get cookies for clearing: {}", e)))?;
         let deletes = cookies
             .into_iter()
             .map(|c| headless_chrome::protocol::cdp::Network::DeleteCookies {
@@ -511,7 +587,9 @@ impl Engine for CdpEngine {
             })
             .collect::<Vec<_>>();
 
-        self.tab.delete_cookies(deletes).map_err(|e| Error::Other(format!("Failed to clear cookies: {}", e)))?;
+        self.tab
+            .delete_cookies(deletes)
+            .map_err(|e| Error::Other(format!("Failed to clear cookies: {}", e)))?;
         Ok(())
     }
 

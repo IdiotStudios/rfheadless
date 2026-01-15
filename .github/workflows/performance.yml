@@ -1,0 +1,32 @@
+name: Performance Bench
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      threshold_ms:
+        description: 'P95 threshold in ms (bench fails if P95 > threshold)'
+        required: false
+        default: '200'
+
+jobs:
+  latency_bench:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Build (release)
+        run: cargo build --release --features rfengine --manifest-path Cargo.toml
+
+      - name: Run latency bench
+        env:
+          PERF_P95_THRESHOLD_MS: ${{ github.event.inputs.threshold_ms || '200' }}
+        run: |
+          echo "Running bench_latency with P95 threshold=${PERF_P95_THRESHOLD_MS}ms"
+          cargo run --release --example bench_latency --features rfengine --manifest-path Cargo.toml

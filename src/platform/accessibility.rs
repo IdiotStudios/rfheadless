@@ -29,9 +29,18 @@ impl NoopAccessibility {
     }
 }
 
+impl Default for NoopAccessibility {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AccessibilityProvider for NoopAccessibility {
     fn export_tree(&self) -> AccessibilityTree {
-        AccessibilityTree { root_id: None, nodes: Vec::new() }
+        AccessibilityTree {
+            root_id: None,
+            nodes: Vec::new(),
+        }
     }
 }
 

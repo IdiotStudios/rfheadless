@@ -2,6 +2,8 @@
 
 A headless browsing engine API for Rust providing a compact, testable, and deterministic environment for loading pages, running JavaScript, and extracting rendered values without always requiring Chrome.
 
+---
+
 ## Features
 
 - **RFEngine (default)**: pure-Rust engine using **Boa** for JS execution and `scraper` for HTML/CSS extraction.
@@ -12,7 +14,24 @@ A headless browsing engine API for Rust providing a compact, testable, and deter
 
 ---
 
-## Quick start (FYI I have not tested this yet)
+## Benchmarks
+
+Results recorded on an i7 4770K CPU with 16GB DDR3 RAM  
+Test on your system with:
+``` bash
+cargo bench --features rfengine
+```
+
+### Results:
+
+[latency_percentiles] samples=[7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 9, 11, 12, 12, 16, 18, 19]
+[latency_percentiles] p50=8ms p95=18ms p99=19ms (threshold=200ms)
+[ perf record: Woken up 129 times to write data ]
+[ perf record: Captured and wrote 35.258 MB perf.data (572 samples) ]
+
+---
+
+## Quick start
 
 ```rust
 use rfheadless::{Engine, EngineConfig};
@@ -27,46 +46,9 @@ See `examples/` for runnable demonstrations.
 
 ---
 
-## Roadmap & Milestones
+## Contributing
 
-High-level goals (subject to change):
-
-- **M1 — JS runtime safety & scheduling**
-  - Script timeouts, runtime limits (done: timeouts + loop/recursion limits)
-  - Microtask/job queue & timer APIs (progress: microtask queue, timers (`setTimeout`/`setInterval`, cancellation), and helpers added; basic Promise polyfill when native Promise is not available)
-  - Context reuse & isolation improvements (TODO)
-
-- **M2 — CSSOM & computed-value parity** 
-  - Full property normalization (em/rem/percent conversions, hsl/hsla/hwb)
-  - Pseudo-elements, advanced selectors, cascade edge-cases
-  - Expand golden fixtures and cross-engine comparisons
-
-- **M3 — Layout & rendering prototype**
-  - Simplified layout engine (flow & box model)
-  - Layout computations (reflow, sizes, line wrapping)
-  - Paint pipeline and screenshot API (basic rasterization)
-
-- **M4 — Network & tooling**
-  - Request interception, fulfill, and mock responses
-  - Network emulation (latency/bandwidth/offline)
-  - Optional Chrome comparison CI job (gated)
-
-- **M5 — Polishing & ops**
-  - Performance optimizations, benchmarks, docs, security/fuzzing, release automation
-
----
-
-## Scope & Boundaries
-
-**(current focus — prioritized):**
-- **Rendering (priority: high)** — Achieve full pixel-accurate rendering parity with Chromium. Phase 1 focuses on a simplified layout & paint pipeline (flow layout, box model, reflow, line wrapping, and basic rasterization). Deliverables: deterministic screenshot API, image golden fixtures, and cross-engine comparison tooling.
-- **Platform APIs (priority: high)** — Implement the Web platform surface required for parity tests: service workers, media playback hooks, accessibility tree basics, and device emulation. Each surface will be delivered incrementally and gated by deterministic tests and golden fixtures.
-- **CDP surface (priority: medium)** — Provide an optional, feature-gated CDP server translation façade for external tooling and Chrome-compatibility checks. Aim for a minimal surface sufficient for comparisons and CI integration, expandable over time.
-
-**(long-term):**
-- Expand and stabilize the rendering and platform stacks, add performance optimizations, implement advanced layout features (flex/grid, table layout), and harden via fuzzing and benchmarks.
-
-Decisions favor a pragmatic, test-first approach: prioritize an incremental path to platform parity by implementing the rendering stack and platform APIs as driven by deterministic tests and parity goals.
+If you do wanna conrtibute (apprciated) then feel free to create issues or pull requests! I love the support. We mainly focusing on getting the engine to work the best in the shortest amunt of time but other help in the engine is good to!
 
 ---
 

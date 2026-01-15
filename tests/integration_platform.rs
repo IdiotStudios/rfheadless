@@ -1,13 +1,19 @@
-use rfheadless::platform::service_worker::NoopServiceWorkerManager;
+use rfheadless::platform::accessibility::NoopAccessibility;
 use rfheadless::platform::device::NoopDeviceEmulation;
 use rfheadless::platform::media::NoopMediaHooks;
-use rfheadless::platform::accessibility::NoopAccessibility;
-use rfheadless::platform::{ServiceWorkerManager, DeviceEmulation, MediaHooks, AccessibilityProvider};
+use rfheadless::platform::service_worker::NoopServiceWorkerManager;
+use rfheadless::platform::{
+    AccessibilityProvider, DeviceEmulation, MediaHooks, ServiceWorkerManager,
+};
 
 #[test]
 fn service_worker_noop_dispatch() {
     let m = NoopServiceWorkerManager::new();
-    let ev = rfheadless::platform::FetchEvent { request_url: "https://example.com/".into(), method: "GET".into(), headers: Default::default() };
+    let ev = rfheadless::platform::FetchEvent {
+        request_url: "https://example.com/".into(),
+        method: "GET".into(),
+        headers: Default::default(),
+    };
     let res = m.dispatch_fetch(&ev).expect("dispatch should succeed");
     assert_eq!(res, b"noop".to_vec());
 }
@@ -17,7 +23,12 @@ fn device_emulation_metrics_roundtrip() {
     let d = NoopDeviceEmulation::new();
     let before = d.metrics();
     assert_eq!(before.width, 1280);
-    d.set_metrics(rfheadless::platform::DeviceMetrics { width: 360, height: 640, dpr: 3.0, touch: true });
+    d.set_metrics(rfheadless::platform::DeviceMetrics {
+        width: 360,
+        height: 640,
+        dpr: 3.0,
+        touch: true,
+    });
     let after = d.metrics();
     assert_eq!(after.width, 360);
     assert!(after.touch);

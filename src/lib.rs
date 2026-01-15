@@ -98,12 +98,34 @@ pub struct EngineConfig {
     pub script_loop_iteration_limit: u64,
     /// Maximum recursion depth before Boa throws (usize::MAX => disabled)
     pub script_recursion_limit: usize,
+
+    /// Optional path to Chrome/Chromium executable (used by CDP backend)
+    pub cdp_chrome_executable: Option<String>,
+
+    /// Optional WebSocket URL to connect to an existing CDP-compatible browser (e.g., ws://...)
+    pub cdp_ws_url: Option<String>,
+
+    /// If true, create a persistent Tokio runtime inside the engine for async tasks
+    pub enable_persistent_runtime: bool,
+
+    /// Maximum concurrent stylesheet fetches when using async fetching
+    pub stylesheet_fetch_concurrency: usize,
+
+    /// Whether to attempt lightweight preconnect (HEAD) to stylesheet hosts before fetching
+    /// (helps warm TCP/TLS connections). Enabled by default.
+    pub enable_preconnect: bool,
+
+    /// Whether `load_url` should wait for linked stylesheets to finish fetching
+    /// before returning. When false, stylesheet fetching runs in background and
+    /// `load_url` returns once HTML is parsed. Default: true.
+    pub wait_for_stylesheets_on_load: bool,
 }
 
 impl Default for EngineConfig {
     fn default() -> Self {
         Self {
-            user_agent: "Mozilla/5.0 (X11; Linux x86_64) Gecko/20100101 Firefox/115.0 RFOX/0.3".to_string(),
+            user_agent: "Mozilla/5.0 (X11; Linux x86_64) Gecko/20100101 Firefox/115.0 RFOX/0.3"
+                .to_string(),
             viewport: Viewport::default(),
             timeout_ms: 30000,
             headers: HashMap::new(),
@@ -114,6 +136,16 @@ impl Default for EngineConfig {
             script_timeout_ms: 5000,
             script_loop_iteration_limit: 1000000,
             script_recursion_limit: 1024,
+            cdp_chrome_executable: None,
+            cdp_ws_url: None,
+            // persistent runtime enabled by default for better latency
+            enable_persistent_runtime: true,
+            // default concurrency tuned to CPU count (cap at 32)
+            stylesheet_fetch_concurrency: std::cmp::min(32, num_cpus::get().saturating_mul(4)),
+            // enable preconnect by default to warm connections and reduce cold latency
+            enable_preconnect: true,
+            // By default, wait for stylesheet fetches to complete on load.
+            wait_for_stylesheets_on_load: true,
         }
     }
 }
@@ -241,7 +273,6 @@ pub enum RequestAction {
     },
 }
 
-
 /// Core trait for headless engine implementations
 pub trait Engine {
     /// Create a new engine instance with the given configuration
@@ -304,7 +335,13 @@ pub trait Engine {
     fn set_cookies(&mut self, cookies: Vec<CookieParam>) -> Result<()>;
 
     /// Delete a cookie (by name, optionally with url/domain/path to disambiguate)
-    fn delete_cookie(&mut self, name: &str, url: Option<&str>, domain: Option<&str>, path: Option<&str>) -> Result<()>;
+    fn delete_cookie(
+        &mut self,
+        name: &str,
+        url: Option<&str>,
+        domain: Option<&str>,
+        path: Option<&str>,
+    ) -> Result<()>;
 
     /// Clear all cookies for the browser context
     fn clear_cookies(&mut self) -> Result<()>;
@@ -312,7 +349,15 @@ pub trait Engine {
     // --- Higher-level convenience helpers (default implementations) ---
 
     /// Set a single cookie with common parameters
-    fn set_cookie_simple(&mut self, name: &str, value: &str, url: Option<&str>, domain: Option<&str>, path: Option<&str>, expires: Option<u64>) -> Result<()> {
+    fn set_cookie_simple(
+        &mut self,
+        name: &str,
+        value: &str,
+        url: Option<&str>,
+        domain: Option<&str>,
+        path: Option<&str>,
+        expires: Option<u64>,
+    ) -> Result<()> {
         let param = CookieParam {
             name: name.to_string(),
             value: value.to_string(),
@@ -336,7 +381,10 @@ pub trait Engine {
     /// Clear cookies for a given domain
     fn clear_cookies_for_domain(&mut self, domain: &str) -> Result<()> {
         let cookies = self.get_cookies()?;
-        for c in cookies.into_iter().filter(|c| c.domain.as_deref() == Some(domain)) {
+        for c in cookies
+            .into_iter()
+            .filter(|c| c.domain.as_deref() == Some(domain))
+        {
             let _ = self.delete_cookie(&c.name, None, Some(domain), c.path.as_deref());
         }
         Ok(())
@@ -367,7 +415,7 @@ pub fn new_engine(config: EngineConfig) -> Result<impl Engine> {
 #[cfg(all(not(feature = "rfengine"), not(feature = "cdp"), feature = "simple"))]
 pub fn new_engine(config: EngineConfig) -> Result<impl Engine> {
     simple::SimpleEngine::new(config)
-} 
+}
 
 #[cfg(test)]
 mod tests {

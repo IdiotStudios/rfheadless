@@ -16,6 +16,10 @@ pub struct Screenshot {
 
 impl Screenshot {
     pub fn empty(width: u32, height: u32) -> Self {
-        Self { width, height, png_data: Vec::new() }
+        Self {
+            width,
+            height,
+            png_data: Vec::new(),
+        }
     }
 }

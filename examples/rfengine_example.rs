@@ -1,4 +1,4 @@
-use rfheadless::{EngineConfig, Engine};
+use rfheadless::{Engine, EngineConfig};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     if !cfg!(feature = "rfengine") {
@@ -24,10 +24,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     engine.load_url(&url)?;
 
     let snap = engine.render_text_snapshot()?;
-    println!("title: {}\ntext: {}\nurl: {}", snap.title, snap.text, snap.url);
+    println!(
+        "title: {}\ntext: {}\nurl: {}",
+        snap.title, snap.text, snap.url
+    );
 
     // Evaluate JS to select the element and return its text
-    let res = engine.evaluate_script(r#"(function(){ return document.querySelector('#hello').text; })()"#)?;
+    let res = engine
+        .evaluate_script(r#"(function(){ return document.querySelector('#hello').text; })()"#)?;
     println!("eval result: {} (error={})", res.value, res.is_error);
 
     Ok(())

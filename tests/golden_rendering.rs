@@ -1,6 +1,5 @@
 use std::fs;
 use std::path::PathBuf;
-use hex;
 
 use rfheadless::rendering::raster::rasterize_with_seed;
 
@@ -29,7 +28,10 @@ fn golden_raster_matches_fixture() {
     }
 
     if !expected_path.exists() {
-        println!("No golden at {:?}; run with UPDATE_GOLDENS=1 to create it. Skipping.", expected_path);
+        println!(
+            "No golden at {:?}; run with UPDATE_GOLDENS=1 to create it. Skipping.",
+            expected_path
+        );
         return;
     }
 

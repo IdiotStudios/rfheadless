@@ -29,11 +29,9 @@ fn start_test_server() -> String {
                             .parse::<tiny_http::Header>()
                             .unwrap(),
                     ),
-                    "/redirect" => Response::from_string("").with_status_code(302).with_header(
-                        "Location: /"
-                            .parse::<tiny_http::Header>()
-                            .unwrap(),
-                    ),
+                    "/redirect" => Response::from_string("")
+                        .with_status_code(302)
+                        .with_header("Location: /".parse::<tiny_http::Header>().unwrap()),
                     _ => Response::from_string("Not Found").with_status_code(404),
                 };
                 let _ = request.respond(response);
@@ -121,7 +119,10 @@ fn test_evaluate_script() {
 #[ignore]
 fn test_evaluate_isolated_context() {
     let base_url = start_test_server();
-    let config = EngineConfig { enable_js_isolation: true, ..Default::default() };
+    let config = EngineConfig {
+        enable_js_isolation: true,
+        ..Default::default()
+    };
 
     let mut engine = rfheadless::new_engine(config).expect("Failed to create engine");
     engine.load_url(&base_url).expect("Failed to load URL");
@@ -130,7 +131,9 @@ fn test_evaluate_isolated_context() {
     // same-origin it should not be allowed — inner script can catch and return 'ERR'
     let script = r#"(function(){ try { parent.document; return 'SHOULD_NOT_REACH'; } catch(e) { return 'ERR'; } })()"#;
 
-    let result = engine.evaluate_script(script).expect("Failed to evaluate isolated script");
+    let result = engine
+        .evaluate_script(script)
+        .expect("Failed to evaluate isolated script");
     assert!(!result.is_error);
     assert!(result.value.contains("ERR"));
 
@@ -156,22 +159,28 @@ fn test_custom_user_agent() {
     assert!(result.value.contains("CustomBot/1.0"));
 
     // Test cookies round-trip
-    engine.set_cookies(vec![rfheadless::CookieParam {
-        name: "testcookie".to_string(),
-        value: "abc".to_string(),
-        url: None,
-        domain: None,
-        path: None,
-        secure: None,
-        http_only: None,
-        same_site: None,
-        expires: None,
-    }]).expect("Failed to set cookie");
+    engine
+        .set_cookies(vec![rfheadless::CookieParam {
+            name: "testcookie".to_string(),
+            value: "abc".to_string(),
+            url: None,
+            domain: None,
+            path: None,
+            secure: None,
+            http_only: None,
+            same_site: None,
+            expires: None,
+        }])
+        .expect("Failed to set cookie");
 
     let cookies = engine.get_cookies().expect("Failed to get cookies");
-    assert!(cookies.iter().any(|c| c.name == "testcookie" && c.value == "abc"));
+    assert!(cookies
+        .iter()
+        .any(|c| c.name == "testcookie" && c.value == "abc"));
 
-    engine.delete_cookie("testcookie", None, None, None).expect("Failed to delete cookie");
+    engine
+        .delete_cookie("testcookie", None, None, None)
+        .expect("Failed to delete cookie");
 
     engine.close().unwrap();
 }
@@ -223,7 +232,9 @@ fn test_on_console_callback() {
     engine.load_url(&base_url).expect("Failed to load URL");
 
     // Evaluate a console message
-    engine.evaluate_script_in_page("console.log('hello-from-test')").unwrap();
+    engine
+        .evaluate_script_in_page("console.log('hello-from-test')")
+        .unwrap();
 
     std::thread::sleep(std::time::Duration::from_millis(200));
 
@@ -253,7 +264,9 @@ fn test_on_request_callback() {
     engine.load_url(&base_url).expect("Failed to load URL");
 
     // Trigger a request by evaluating a script that fetches a resource
-    engine.evaluate_script_in_page("fetch('/').then(()=>console.log('f'))").unwrap();
+    engine
+        .evaluate_script_in_page("fetch('/').then(()=>console.log('f'))")
+        .unwrap();
 
     std::thread::sleep(std::time::Duration::from_millis(200));
 

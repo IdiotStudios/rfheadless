@@ -1,8 +1,8 @@
+use crate::Engine;
 use crate::{cdp, EngineConfig, Error, Result, ScriptResult};
 use std::sync::mpsc::{self, Sender};
 use std::thread;
 use tokio::sync::oneshot;
-use crate::Engine;
 
 enum Command {
     Goto(String, oneshot::Sender<Result<()>>),
@@ -13,7 +13,13 @@ enum Command {
     // Cookies
     GetCookies(oneshot::Sender<Result<Vec<crate::Cookie>>>),
     SetCookie(crate::CookieParam, oneshot::Sender<Result<()>>),
-    DeleteCookie(String, Option<String>, Option<String>, Option<String>, oneshot::Sender<Result<()>>),
+    DeleteCookie(
+        String,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+        oneshot::Sender<Result<()>>,
+    ),
     ClearCookies(oneshot::Sender<Result<()>>),
 
     Close(oneshot::Sender<Result<()>>),
@@ -41,7 +47,8 @@ impl Browser {
         let config = config.unwrap_or_default();
 
         let (cmd_tx, cmd_rx) = mpsc::channel::<Command>();
-        let (init_tx, init_rx): (oneshot::Sender<Result<()>>, oneshot::Receiver<Result<()>>) = oneshot::channel();
+        let (init_tx, init_rx): (oneshot::Sender<Result<()>>, oneshot::Receiver<Result<()>>) =
+            oneshot::channel();
 
         thread::spawn(move || {
             // Initialize engine on the worker thread
@@ -94,7 +101,12 @@ impl Browser {
                     }
 
                     Command::DeleteCookie(name, url, domain, path, resp) => {
-                        let res = engine.delete_cookie(&name, url.as_deref(), domain.as_deref(), path.as_deref());
+                        let res = engine.delete_cookie(
+                            &name,
+                            url.as_deref(),
+                            domain.as_deref(),
+                            path.as_deref(),
+                        );
                         let _ = resp.send(res);
                     }
 
@@ -132,7 +144,8 @@ impl Browser {
     pub async fn close(self) -> Result<()> {
         let (tx, rx) = oneshot::channel();
         let _ = self.cmd_tx.send(Command::Close(tx));
-        rx.await.map_err(|e| Error::Other(format!("Close canceled: {}", e)))?
+        rx.await
+            .map_err(|e| Error::Other(format!("Close canceled: {}", e)))?
     }
 
     // Browser-level convenience cookie helpers
@@ -150,7 +163,13 @@ impl Browser {
     }
 
     /// Convenience: delete a cookie (name, optional url/domain/path)
-    pub async fn delete_cookie(&self, name: &str, url: Option<&str>, domain: Option<&str>, path: Option<&str>) -> Result<()> {
+    pub async fn delete_cookie(
+        &self,
+        name: &str,
+        url: Option<&str>,
+        domain: Option<&str>,
+        path: Option<&str>,
+    ) -> Result<()> {
         let page = self.new_page().await?;
         page.delete_cookie(name, url, domain, path).await
     }
@@ -167,14 +186,17 @@ impl Page {
     pub async fn goto(&self, url: &str) -> Result<()> {
         let (tx, rx) = oneshot::channel();
         let _ = self.cmd_tx.send(Command::Goto(url.to_string(), tx));
-        rx.await.map_err(|e| Error::Other(format!("Goto canceled: {}", e)))?
+        rx.await
+            .map_err(|e| Error::Other(format!("Goto canceled: {}", e)))?
     }
 
     /// Evaluate JavaScript and return the serialized result as a string
     pub async fn eval(&self, script: &str) -> Result<String> {
         let (tx, rx) = oneshot::channel();
         let _ = self.cmd_tx.send(Command::Eval(script.to_string(), tx));
-        let res = rx.await.map_err(|e| Error::Other(format!("Eval canceled: {}", e)))?;
+        let res = rx
+            .await
+            .map_err(|e| Error::Other(format!("Eval canceled: {}", e)))?;
         let sr = res?;
         Ok(sr.value)
     }
@@ -185,7 +207,9 @@ impl Page {
         let _ = self
             .cmd_tx
             .send(Command::EvalInPage(script.to_string(), tx));
-        let res = rx.await.map_err(|e| Error::Other(format!("EvalInPage canceled: {}", e)))?;
+        let res = rx
+            .await
+            .map_err(|e| Error::Other(format!("EvalInPage canceled: {}", e)))?;
         let sr = res?;
         Ok(sr.value)
     }
@@ -194,10 +218,10 @@ impl Page {
     pub async fn screenshot(&self, path: Option<&str>) -> Result<Vec<u8>> {
         let (tx, rx) = oneshot::channel();
         let path_opt = path.map(|s| s.to_string());
-        let _ = self
-            .cmd_tx
-            .send(Command::Screenshot(path_opt, tx));
-        let res = rx.await.map_err(|e| Error::Other(format!("Screenshot canceled: {}", e)))?;
+        let _ = self.cmd_tx.send(Command::Screenshot(path_opt, tx));
+        let res = rx
+            .await
+            .map_err(|e| Error::Other(format!("Screenshot canceled: {}", e)))?;
         res
     }
 
@@ -205,7 +229,9 @@ impl Page {
     pub async fn get_cookies(&self) -> Result<Vec<crate::Cookie>> {
         let (tx, rx) = oneshot::channel();
         let _ = self.cmd_tx.send(Command::GetCookies(tx));
-        let res = rx.await.map_err(|e| Error::Other(format!("GetCookies canceled: {}", e)))?;
+        let res = rx
+            .await
+            .map_err(|e| Error::Other(format!("GetCookies canceled: {}", e)))?;
         res
     }
 
@@ -213,24 +239,40 @@ impl Page {
     pub async fn set_cookie(&self, cookie: crate::CookieParam) -> Result<()> {
         let (tx, rx) = oneshot::channel();
         let _ = self.cmd_tx.send(Command::SetCookie(cookie, tx));
-        let res = rx.await.map_err(|e| Error::Other(format!("SetCookie canceled: {}", e)))?;
+        let res = rx
+            .await
+            .map_err(|e| Error::Other(format!("SetCookie canceled: {}", e)))?;
         res
     }
 
     /// Delete a cookie by name (domain/path optional to disambiguate)
-    pub async fn delete_cookie(&self, name: &str, url: Option<&str>, domain: Option<&str>, path: Option<&str>) -> Result<()> {
+    pub async fn delete_cookie(
+        &self,
+        name: &str,
+        url: Option<&str>,
+        domain: Option<&str>,
+        path: Option<&str>,
+    ) -> Result<()> {
         let (tx, rx) = oneshot::channel();
-        let _ = self.cmd_tx.send(Command::DeleteCookie(name.to_string(), url.map(|s| s.to_string()), domain.map(|s| s.to_string()), path.map(|s| s.to_string()), tx));
-        let res = rx.await.map_err(|e| Error::Other(format!("DeleteCookie canceled: {}", e)))?;
+        let _ = self.cmd_tx.send(Command::DeleteCookie(
+            name.to_string(),
+            url.map(|s| s.to_string()),
+            domain.map(|s| s.to_string()),
+            path.map(|s| s.to_string()),
+            tx,
+        ));
+        let res = rx
+            .await
+            .map_err(|e| Error::Other(format!("DeleteCookie canceled: {}", e)))?;
         res
     }
 
     pub async fn clear_cookies(&self) -> Result<()> {
         let (tx, rx) = oneshot::channel();
         let _ = self.cmd_tx.send(Command::ClearCookies(tx));
-        let res = rx.await.map_err(|e| Error::Other(format!("ClearCookies canceled: {}", e)))?;
+        let res = rx
+            .await
+            .map_err(|e| Error::Other(format!("ClearCookies canceled: {}", e)))?;
         res
     }
-
-
 }

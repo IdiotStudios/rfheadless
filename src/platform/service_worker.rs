@@ -41,8 +41,18 @@ impl NoopServiceWorkerManager {
     }
 }
 
+impl Default for NoopServiceWorkerManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ServiceWorkerManager for NoopServiceWorkerManager {
-    fn register(&self, _scope: &str, _script_url: &str) -> Result<ServiceWorkerRegistration, String> {
+    fn register(
+        &self,
+        _scope: &str,
+        _script_url: &str,
+    ) -> Result<ServiceWorkerRegistration, String> {
         Err("service workers not supported".to_string())
     }
 

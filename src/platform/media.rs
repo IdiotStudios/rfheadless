@@ -21,7 +21,15 @@ pub struct NoopMediaHooks {
 
 impl NoopMediaHooks {
     pub fn new() -> Self {
-        NoopMediaHooks { state: std::sync::Mutex::new(MediaState::Paused) }
+        NoopMediaHooks {
+            state: std::sync::Mutex::new(MediaState::Paused),
+        }
+    }
+}
+
+impl Default for NoopMediaHooks {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

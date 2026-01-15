@@ -24,11 +24,7 @@ pub struct LayoutBox {
 impl LayoutBox {
     pub fn content_width(&self) -> u32 {
         let total = self.box_model.margin + self.box_model.border + self.box_model.padding;
-        if self.rect.width > total {
-            self.rect.width - total
-        } else {
-            0
-        }
+        self.rect.width.saturating_sub(total)
     }
 }
 
@@ -39,8 +35,17 @@ mod tests {
     #[test]
     fn content_width_accounts_for_box_model() {
         let lb = LayoutBox {
-            rect: Rect { x: 0, y: 0, width: 200, height: 100 },
-            box_model: BoxModel { margin: 10, border: 2, padding: 5 },
+            rect: Rect {
+                x: 0,
+                y: 0,
+                width: 200,
+                height: 100,
+            },
+            box_model: BoxModel {
+                margin: 10,
+                border: 2,
+                padding: 5,
+            },
         };
         assert_eq!(lb.content_width(), 183);
     }

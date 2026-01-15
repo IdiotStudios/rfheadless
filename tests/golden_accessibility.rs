@@ -1,7 +1,7 @@
-use std::fs;
-use std::path::PathBuf;
 use rfheadless::rfengine::RFEngine;
 use rfheadless::Engine;
+use std::fs;
+use std::path::PathBuf;
 
 fn gold_path(name: &str) -> PathBuf {
     let mut p = PathBuf::from("tests/goldens/access");
@@ -16,7 +16,9 @@ fn golden_access_snapshot_matches() {
     let addr = server.server_addr();
     std::thread::spawn(move || {
         if let Ok(request) = server.recv() {
-            let response = tiny_http::Response::from_string(fs::read_to_string("tests/goldens/pages/page1.html").unwrap());
+            let response = tiny_http::Response::from_string(
+                fs::read_to_string("tests/goldens/pages/page1.html").unwrap(),
+            );
             let _ = request.respond(response);
         }
     });
@@ -39,7 +41,10 @@ fn golden_access_snapshot_matches() {
     }
 
     if !expected_path.exists() {
-        println!("No access golden at {:?}; run with UPDATE_GOLDENS=1 to create it. Skipping.", expected_path);
+        println!(
+            "No access golden at {:?}; run with UPDATE_GOLDENS=1 to create it. Skipping.",
+            expected_path
+        );
         return;
     }
 

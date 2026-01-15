@@ -3,15 +3,15 @@
 //! This module contains the public types and traits used by engine backends to
 //! expose deterministic, testable platform primitives needed for parity tests.
 
-pub mod service_worker;
-pub mod media;
 pub mod accessibility;
 pub mod device;
+pub mod media;
+pub mod service_worker;
 
-pub use service_worker::{ServiceWorkerManager, ServiceWorkerRegistration, FetchEvent};
+pub use accessibility::{AccessibilityNode, AccessibilityProvider, AccessibilityTree};
+pub use device::{DeviceEmulation, DeviceMetrics};
 pub use media::{MediaHooks, MediaState};
-pub use accessibility::{AccessibilityNode, AccessibilityTree, AccessibilityProvider};
-pub use device::{DeviceMetrics, DeviceEmulation};
+pub use service_worker::{FetchEvent, ServiceWorkerManager, ServiceWorkerRegistration};
 
 /// A small composite trait that engine implementations can offer to allow
 /// consumers to access platform primitives in a typed way.
@@ -32,6 +32,12 @@ pub struct NoopPlatform;
 impl NoopPlatform {
     pub fn new() -> Self {
         NoopPlatform
+    }
+}
+
+impl Default for NoopPlatform {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

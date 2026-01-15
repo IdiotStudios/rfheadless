@@ -20,7 +20,20 @@ pub struct NoopDeviceEmulation {
 
 impl NoopDeviceEmulation {
     pub fn new() -> Self {
-        NoopDeviceEmulation { metrics: std::sync::Mutex::new(DeviceMetrics { width: 1280, height: 720, dpr: 1.0, touch: false }) }
+        NoopDeviceEmulation {
+            metrics: std::sync::Mutex::new(DeviceMetrics {
+                width: 1280,
+                height: 720,
+                dpr: 1.0,
+                touch: false,
+            }),
+        }
+    }
+}
+
+impl Default for NoopDeviceEmulation {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -43,7 +56,12 @@ mod tests {
     fn noop_device_metrics_can_be_updated() {
         let d = NoopDeviceEmulation::new();
         assert_eq!(d.metrics().width, 1280);
-        d.set_metrics(DeviceMetrics { width: 800, height: 600, dpr: 2.0, touch: true });
+        d.set_metrics(DeviceMetrics {
+            width: 800,
+            height: 600,
+            dpr: 2.0,
+            touch: true,
+        });
         let m = d.metrics();
         assert_eq!(m.width, 800);
         assert_eq!(m.dpr, 2.0);

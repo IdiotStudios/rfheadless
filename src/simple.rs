@@ -5,7 +5,6 @@
 //! exposes the same `Engine` trait as other backends. JavaScript and
 //! screenshot support are not provided by this engine (planned for later).
 
-
 use crate::{Engine, EngineConfig, Result, ScriptResult, TextSnapshot};
 #[cfg(not(feature = "rfengine"))]
 use reqwest::blocking::Client;
@@ -26,7 +25,7 @@ type OnConsoleHandler = Arc<dyn Fn(&crate::ConsoleMessage) + Send + Sync>;
 type OnRequestHandler = Arc<dyn Fn(&crate::RequestInfo) -> crate::RequestAction + Send + Sync>;
 
 /// A simple, dependency-light engine that does not run JavaScript.
-/// 
+///
 /// When the `rfengine` feature is enabled this type becomes a thin shim
 /// delegating to `RFEngine` to avoid duplication.
 pub struct SimpleEngine {
@@ -74,7 +73,9 @@ impl Engine for SimpleEngine {
         let client = Client::builder()
             .timeout(Duration::from_millis(config.timeout_ms))
             .build()
-            .map_err(|e| Error::InitializationError(format!("Failed to build HTTP client: {}", e)))?;
+            .map_err(|e| {
+                Error::InitializationError(format!("Failed to build HTTP client: {}", e))
+            })?;
 
         Ok(Self {
             client,
@@ -281,7 +282,13 @@ impl Engine for SimpleEngine {
         Ok(())
     }
 
-    fn delete_cookie(&mut self, _name: &str, _url: Option<&str>, _domain: Option<&str>, _path: Option<&str>) -> Result<()> {
+    fn delete_cookie(
+        &mut self,
+        _name: &str,
+        _url: Option<&str>,
+        _domain: Option<&str>,
+        _path: Option<&str>,
+    ) -> Result<()> {
         Ok(())
     }
 
@@ -333,9 +340,12 @@ mod tests {
         });
 
         let url = format!("http://{}", addr);
-        let mut engine = SimpleEngine::new(crate::EngineConfig::default()).expect("Failed to create SimpleEngine");
+        let mut engine = SimpleEngine::new(crate::EngineConfig::default())
+            .expect("Failed to create SimpleEngine");
         engine.load_url(&url).expect("Failed to load URL");
-        let snapshot = engine.render_text_snapshot().expect("Failed to render snapshot");
+        let snapshot = engine
+            .render_text_snapshot()
+            .expect("Failed to render snapshot");
         assert!(snapshot.title.contains("Hi"));
         assert!(snapshot.text.contains("Hello"));
     }
