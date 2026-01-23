@@ -1,12 +1,12 @@
 [package]
 name = "rfheadless"
-version = "0.1.0"
+version = "0.2.0" # Should probably update this more lol
 edition = "2021"
 authors = ["RFox Contributors"] # Watch there be no contributors lol
 description = "A headless browsing engine API for Rust"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/idiotstudios/rfheadless"
-readme = "README.md"
+readme = "README.md" # Why does this line even exist
 documentation = "https://docs.rs/rfheadless"
 keywords = ["browser", "headless", "automation", "cdp"]
 categories = ["web-programming", "api-bindings"]
@@ -32,23 +32,20 @@ base64 = "0.21"
 tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "sync"] }
 log = "0.4"
 
-# HTTP + HTML parsing backend (simple engine & RFEngine)
+# HTTP + HTML parsing backend
 reqwest = { version = "0.11", optional = true, features = ["blocking", "rustls-tls"] }
 scraper = { version = "0.13", optional = true }
 boa_engine = { version = "0.20", optional = true }
 url = { version = "2", optional = true }
 
-# CDP backend (feature-gated)
+# CDP backend (headless Chrome)
 headless_chrome = { git = "https://github.com/rust-headless-chrome/rust-headless-chrome", optional = true, version = "1.0.20" }
 
-# Deterministic test helpers (used by rendering/golden tests)
 sha2 = "0.10"
 hex = "0.4"
-
-# Async helpers used for parallel stylesheet fetching
 futures = "0.3"
 
-# CLI
+# CLI Things
 clap = { version = "4.2", features = ["derive"] }
 num_cpus = "1.17"
 

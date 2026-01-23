@@ -9,5 +9,6 @@
   { "title": "Platform", "path": "platform.md" },
   { "title": "Rendering", "path": "rendering.md" },
   { "title": "Examples & Benchmarks", "path": "examples.md" },
+  { "title": "Releases", "path": "releases.md" },
   { "title": "Contributing", "path": "CONTRIBUTING.md" }
 ]

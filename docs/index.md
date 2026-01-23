@@ -8,6 +8,7 @@ Welcome to the rfheadless docs. This repository provides a headless browsing eng
 - **Platform** — Platform surfaces such as Service Workers, Media hooks, Accessibility (See `docs/platform.md`).
 - **Rendering** — Rendering primitives and deterministic raster helpers (See `docs/rendering.md`).
 - **Examples & Benchmarks** — How to run examples and benches (See `docs/examples.md`).
+- **Releases** — Desktop releases: building and publishing Windows & Linux binaries (See `docs/releases.md`).
 - **Contributing** — Project contribution guidelines (See `docs/CONTRIBUTING.md`).
 
 > Note: for the full API reference, run `cargo doc --open` or view docs on docs.rs once published.
