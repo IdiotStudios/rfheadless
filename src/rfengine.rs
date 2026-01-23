@@ -991,18 +991,53 @@ impl Engine for RFEngine {
             let in_path = tmpd.join(format!("rfh_input_{}.html", uniq));
             let out_path = tmpd.join(format!("rfh_out_{}.png", uniq));
 
+            // Prepare HTML for wkhtmltoimage. If we have a URL, inject a
+            // <base href="..."> so relative resources resolve correctly when
+            // rendering the local temp file.
+            let mut html_for_wk = html.clone();
+            if let Some(u) = &self.last_url {
+                let base = format!(r#"<base href=\"{}\">"#, u);
+                if html_for_wk.contains("<head") {
+                    if let Some(idx) = html_for_wk.find("<head") {
+                        if let Some(gt) = html_for_wk[idx..].find('>') {
+                            let insert_pos = idx + gt + 1;
+                            html_for_wk.insert_str(insert_pos, &base);
+                        } else {
+                            html_for_wk = format!("{}{}", base, html_for_wk);
+                        }
+                    }
+                } else if html_for_wk.contains("<html") {
+                    if let Some(idx) = html_for_wk.find("<html") {
+                        if let Some(gt) = html_for_wk[idx..].find('>') {
+                            let insert_pos = idx + gt + 1;
+                            html_for_wk.insert_str(insert_pos, &format!("<head>{}</head>", base));
+                        } else {
+                            html_for_wk = format!("{}{}", base, html_for_wk);
+                        }
+                    }
+                } else {
+                    html_for_wk = format!("<head>{}</head>\n{}", base, html_for_wk);
+                }
+            }
+
             // Write HTML seed to input file
-            if let Err(e) = fs::write(&in_path, &seed) {
+            if let Err(e) = fs::write(&in_path, &html_for_wk) {
                 eprintln!("wkhtmltoimage: failed to write temp html: {}", e);
             } else {
                 // Invoke wkhtmltoimage with viewport/size options. We disable
-                // smart-width so the provided width is respected.
+                // smart-width so the provided width is respected. Enable
+                // JavaScript and give a small delay to allow external assets to
+                // load.
                 let status = std::process::Command::new("wkhtmltoimage")
                     .arg("--width")
                     .arg(width.to_string())
                     .arg("--height")
                     .arg(height.to_string())
                     .arg("--disable-smart-width")
+                    .arg("--enable-javascript")
+                    .arg("--javascript-delay")
+                    .arg("250")
+                    .arg("--enable-local-file-access")
                     .arg(in_path.to_str().unwrap())
                     .arg(out_path.to_str().unwrap())
                     .status();
