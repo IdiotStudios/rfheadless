@@ -2,6 +2,9 @@
 
 A headless browsing engine API for Rust providing a compact, testable, and deterministic environment for loading pages, running JavaScript, and extracting rendered values without always requiring Chrome.
 
+Crates: https://crates.io/crates/rfheadless
+Docs: https://idiotstudios.github.io/rfheadless/
+
 ---
 
 ## Features
