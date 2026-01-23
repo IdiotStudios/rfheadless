@@ -45,10 +45,17 @@ jobs:
       - name: Build release
         run: cargo build --release
       - name: Package Windows binary
+        shell: powershell
         run: |
-          mkdir out
-          powershell -Command "Compress-Archive -Path target\\release\\rfheadless.exe -DestinationPath out\\rfheadless-${{ github.ref_name }}-x86_64-pc-windows-msvc.zip"
-          powershell -Command "Get-FileHash out\\rfheadless-${{ github.ref_name }}-x86_64-pc-windows-msvc.zip -Algorithm SHA256 | ForEach-Object { \"$($_.Hash) $($_.Path)\" } > out\\rfheadless-${{ github.ref_name }}-x86_64-pc-windows-msvc.zip.sha256"
+          # ensure output dir exists
+          New-Item -ItemType Directory -Force -Path out | Out-Null
+
+          $file = "out\\rfheadless-${{ github.ref_name }}-x86_64-pc-windows-msvc.zip"
+          Compress-Archive -Path "target\\release\\rfheadless.exe" -DestinationPath $file
+
+          # produce a sha256 file in the format: <hash>  <filename>
+          $hash = (Get-FileHash $file -Algorithm SHA256).Hash
+          "{0}  {1}" -f $hash, (Split-Path $file -Leaf) | Out-File -Encoding ascii "out\\rfheadless-${{ github.ref_name }}-x86_64-pc-windows-msvc.zip.sha256"
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
