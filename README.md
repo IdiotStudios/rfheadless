@@ -49,6 +49,18 @@ See `examples/` for runnable demonstrations.
 
 ---
 
+## Desktop releases (Windows & Linux)
+
+Each release should include:
+- A packed binary (Linux: .tar.gz, Windows: .zip)
+- A corresponding SHA256 checksum file 
+
+Notes:
+- The release workflow lives at `.github/workflows/release.yml` and is triggered on push tags `v*` and via manual dispatch.
+- Pushing an annotated tag (e.g. `git tag -a v0.2.0 -m "v0.2.0" && git push origin v0.2.0`) will start the release pipeline.
+
+---
+
 ## Contributing
 
 If you do wanna conrtibute (apprciated) then feel free to create issues or pull requests! I love the support. We mainly focusing on getting the engine to work the best in the shortest amunt of time but other help in the engine is good to!
