@@ -3,7 +3,7 @@ use rfheadless::Engine;
 use std::io::{self, BufRead, Write};
 
 #[derive(Parser)]
-#[clap(author, version, about, long_about = None)]
+#[clap(author, version, about, long_about = "Note: You must use a subcommand. Passing a URL directly as the first argument without the `run` subcommand will not work. Use `rfheadless run <URL>`.")]
 struct Cli {
     #[clap(subcommand)]
     command: Commands,
@@ -11,7 +11,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Load a URL and print a text snapshot
+    /// Load a URL, print a text snapshot and optionally save a screenshot (`--screenshot <path>`)
     Run {
         /// URL to load
         url: String,
@@ -31,10 +31,22 @@ enum Commands {
         #[clap(long, action = clap::ArgAction::SetTrue)]
         disable_persistent_runtime: bool,
     },
+
     /// Evaluate a small JS expression in the current page context and print result
-    Eval { script: String },
-    /// Take a screenshot of the last loaded page
-    Screenshot { path: String },
+    Eval {
+        /// URL to load before evaluating (optional)
+        #[clap(long)]
+        url: Option<String>,
+        /// JS script to evaluate (omit to read from stdin)
+        script: Option<String>,
+    },
+    /// Take a screenshot of the last loaded page or a URL
+    Screenshot {
+        path: String,
+        /// URL to load before taking screenshot (optional)
+        #[clap(long)]
+        url: Option<String>,
+    },
     /// Abort currently running script(s)
     Abort,
     /// Cookie management
@@ -85,7 +97,18 @@ enum ConfigAction {
     /// Set stylesheet concurrency
     SetConcurrency { value: usize },
     /// Toggle persistent runtime
-    SetPersistent { enabled: bool },
+    SetPersistent {
+        #[clap(subcommand)]
+        action: PersistentAction,
+    },
+}
+
+#[derive(Subcommand)]
+enum PersistentAction {
+    /// Enable persistent runtime
+    Enable,
+    /// Disable persistent runtime
+    Disable,
 }
 
 fn worker_main() -> io::Result<()> {
@@ -194,19 +217,54 @@ fn run_cli_cmd(run: Commands) -> Result<(), Box<dyn std::error::Error>> {
             }
             engine.close()?;
         }
-        Commands::Eval { script } => {
-            // For Eval we use defaults but enable JS
+        Commands::Eval { url, script } => {
+            // For Eval we use defaults and enable JS
             let cfg = rfheadless::EngineConfig::default();
             let mut engine = rfheadless::new_engine(cfg)?;
-            match engine.evaluate_script(&script) {
+
+            // Optionally load a URL into the engine before evaluating
+            if let Some(u) = url {
+                if let Err(e) = engine.load_url(&u) {
+                    eprintln!("Failed to load URL for eval: {}", e);
+                    let _ = engine.close();
+                    return Ok(());
+                }
+            }
+
+            let script_text = match script {
+                Some(s) => s,
+                None => {
+                    // Read script from stdin when not provided as an argument
+                    use std::io::Read;
+                    let mut buf = String::new();
+                    std::io::stdin().read_to_string(&mut buf)?;
+                    buf
+                }
+            };
+
+            match engine.evaluate_script(&script_text) {
                 Ok(res) => println!("Result: {} (is_error={})", res.value, res.is_error),
                 Err(e) => eprintln!("Eval failed: {}", e),
             }
             let _ = engine.close();
         }
-        Commands::Screenshot { path } => {
+        Commands::Screenshot { path, url } => {
             let cfg = rfheadless::EngineConfig::default();
-            let engine = rfheadless::new_engine(cfg)?;
+            let mut engine = rfheadless::new_engine(cfg)?;
+
+            // Must have a page loaded to take a screenshot; allow loading a URL
+            if let Some(u) = url {
+                if let Err(e) = engine.load_url(&u) {
+                    eprintln!("Failed to load URL for screenshot: {}", e);
+                    let _ = engine.close();
+                    return Ok(());
+                }
+            } else {
+                eprintln!("No page loaded. Pass `--url <URL>` to load a page before taking a screenshot.");
+                let _ = engine.close();
+                return Ok(());
+            }
+
             match engine.render_png() {
                 Ok(p) => {
                     let _ = std::fs::write(path, p);
@@ -311,8 +369,11 @@ fn run_cli_cmd(run: Commands) -> Result<(), Box<dyn std::error::Error>> {
                 ConfigAction::SetConcurrency { value } => {
                     println!("To run with a different stylesheet fetch concurrency, use: `rfheadless run --stylesheet-concurrency {}`\nThis will affect the next run of the engine.", value);
                 }
-                ConfigAction::SetPersistent { enabled } => {
-                    println!("To change persistent runtime behavior for a run, pass: `rfheadless run --enable-persistent-runtime {}`\nThis will affect the next run of the engine.", enabled);
+                ConfigAction::SetPersistent { action } => {
+                    match action {
+                        PersistentAction::Enable => println!("Persistent runtime is enabled by default. To disable it for a run, pass: `rfheadless run --disable-persistent-runtime`.\nThis will affect the next run of the engine."),
+                        PersistentAction::Disable => println!("Persistent runtime is disabled. To enable it (default behavior), run without `--disable-persistent-runtime`.\nThis will affect the next run of the engine."),
+                    }
                 }
             }
         }

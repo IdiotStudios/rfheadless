@@ -2,7 +2,7 @@
 
 A headless browsing engine API for Rust providing a compact, testable, and deterministic environment for loading pages, running JavaScript, and extracting rendered values without always requiring Chrome.
 
-Crates: https://crates.io/crates/rfheadless
+Crates: https://crates.io/crates/rfheadless  
 Docs: https://idiotstudios.github.io/rfheadless/
 
 ---
@@ -63,6 +63,61 @@ Verifying downloaded artifacts:
 Notes:
 - The release workflow lives at `.github/workflows/release.yml` and is triggered on push tags `v*` and via manual dispatch.
 - Pushing an annotated tag (e.g. `git tag -a v0.2.0 -m "v0.2.0" && git push origin v0.2.0`) will start the release pipeline.
+
+---
+
+## Using the executable as a CLI
+
+**Quick help**
+```bash
+# Linux
+./rfheadless --help
+./rfheadless run --help
+
+# Windows
+.\rfheadless.exe --help
+```
+
+**Common examples**
+- Run a URL and print a short text snapshot:
+```bash
+rfheadless run https://example.com
+```
+- Run and save a screenshot (and disable JavaScript):
+```bash
+rfheadless run https://example.com --screenshot out.png --no-js
+```
+- Evaluate a JS expression in a page context (load a URL first):
+```bash
+rfheadless eval --url https://example.com 'document.title'
+# or read script from stdin:
+# echo "document.title" | rfheadless eval --url https://example.com
+```
+- Save a screenshot of a URL:
+```bash
+rfheadless screenshot out.png --url https://example.com
+```
+- Cookies (ephemeral per-invocation):
+```bash
+rfheadless cookies list
+rfheadless cookies set name value --url https://example.com
+```
+
+> Note: cookie operations use a fresh temporary engine and do not persist across separate CLI invocations.- Inspect defaults / config tips:
+```bash
+rfheadless config show
+# toggle persistent runtime:
+rfheadless config set-persistent enable
+rfheadless config set-persistent disable
+```
+
+**Notes & tips**
+- `eval` will error if no document is loaded — use `--url` or pipe a script and include `--url`.
+- You can run `rfheadless run` to both load a page and capture a screenshot in a single command.
+- The `--worker` mode is used internally by the RFEngine backend and is generally not invoked manually.
+- The `abort` command requires the `rfengine` feature; compile with `--features rfengine` to enable it.
+- **Screenshots**: RFEngine now tries to use `wkhtmltoimage` (if available on PATH) to produce real pixel-rendered screenshots; if that fails it falls back to a deterministic textual screenshot renderer (title + visible text rendered into an image). For fully pixel-perfect screenshots consider the CDP backend (Chrome).
+- Note: passing a URL directly as the first argument without the `run` subcommand will not work. Use `rfheadless run <URL>`.
 
 ---
 

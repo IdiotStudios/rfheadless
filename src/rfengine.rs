@@ -954,9 +954,91 @@ impl Engine for RFEngine {
     }
 
     fn render_png(&self) -> Result<Vec<u8>> {
-        Err(Error::RenderError(
-            "Screenshots are not supported by RFEngine".into(),
-        ))
+        let html = self
+            .last_html
+            .as_ref()
+            .ok_or_else(|| Error::RenderError("No document loaded".into()))?;
+
+        let width = self.config.viewport.width;
+        let height = self.config.viewport.height;
+
+        // Use the HTML + URL (if present) as a seed so screenshots are content-addressed
+        let mut seed = html.clone();
+        if let Some(u) = &self.last_url {
+            seed.push_str(u);
+        }
+
+        // First, if `wkhtmltoimage` is available on PATH, try to use it to
+        // produce a real (pixel-rendered) screenshot of the HTML document.
+        // This is a pragmatic, fast approach for now — if it fails we fall
+        // back to the deterministic textual rasterizer used in Phase 1.
+        let try_wk = std::process::Command::new("wkhtmltoimage")
+            .arg("--version")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false);
+
+        if try_wk {
+            use std::fs;
+            use std::time::{SystemTime, UNIX_EPOCH};
+
+            // Small unique suffix for temp files
+            let uniq = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map(|d| d.as_millis())
+                .unwrap_or(0u128);
+            let tmpd = std::env::temp_dir();
+            let in_path = tmpd.join(format!("rfh_input_{}.html", uniq));
+            let out_path = tmpd.join(format!("rfh_out_{}.png", uniq));
+
+            // Write HTML seed to input file
+            if let Err(e) = fs::write(&in_path, &seed) {
+                eprintln!("wkhtmltoimage: failed to write temp html: {}", e);
+            } else {
+                // Invoke wkhtmltoimage with viewport/size options. We disable
+                // smart-width so the provided width is respected.
+                let status = std::process::Command::new("wkhtmltoimage")
+                    .arg("--width")
+                    .arg(width.to_string())
+                    .arg("--height")
+                    .arg(height.to_string())
+                    .arg("--disable-smart-width")
+                    .arg(in_path.to_str().unwrap())
+                    .arg(out_path.to_str().unwrap())
+                    .status();
+
+                match status {
+                    Ok(s) if s.success() => match fs::read(&out_path) {
+                        Ok(bytes) => {
+                            // Clean up temp files best-effort
+                            let _ = fs::remove_file(&in_path);
+                            let _ = fs::remove_file(&out_path);
+                            return Ok(bytes);
+                        }
+                        Err(e) => {
+                            eprintln!("wkhtmltoimage: failed to read output: {}", e);
+                        }
+                    },
+                    Ok(s) => {
+                        eprintln!("wkhtmltoimage failed with status: {}", s);
+                    }
+                    Err(e) => {
+                        eprintln!("wkhtmltoimage invocation failed: {}", e);
+                    }
+                }
+            }
+            // best-effort cleanup
+            let _ = std::fs::remove_file(&in_path);
+            let _ = std::fs::remove_file(&out_path);
+        }
+
+        // Fallback: use deterministic textual rasterizer (existing behavior)
+        let screenshot = crate::rendering::raster::rasterize_png(width, height, seed.as_bytes());
+        if screenshot.png_data.is_empty() {
+            Err(Error::RenderError("Screenshot generation failed".into()))
+        } else {
+            Ok(screenshot.png_data)
+        }
     }
 
     fn evaluate_script(&mut self, script: &str) -> Result<ScriptResult> {

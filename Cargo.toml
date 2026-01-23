@@ -43,6 +43,8 @@ headless_chrome = { git = "https://github.com/rust-headless-chrome/rust-headless
 
 sha2 = "0.10"
 hex = "0.4"
+png = "0.17"
+font8x8 = "0.3"
 futures = "0.3"
 
 # CLI Things
