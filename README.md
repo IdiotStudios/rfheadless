@@ -49,11 +49,16 @@ See `examples/` for runnable demonstrations.
 
 ---
 
-## Desktop releases (Windows & Linux)
+## Desktop releases (Windows, Linux & macOS)
 
-Each release should include:
-- A packed binary (Linux: .tar.gz, Windows: .zip)
-- A corresponding SHA256 checksum file 
+Each release includes:
+- A packed binary (Linux: .tar.gz, Windows: .zip, macOS: .tar.gz for x86_64 and aarch64)
+- A corresponding SHA256 checksum file for each artifact
+
+Verifying downloaded artifacts:
+- On Linux: `sha256sum -c rfheadless-VERSION-x86_64-unknown-linux-gnu.tar.gz.sha256`
+- On macOS: `shasum -a 256 -c rfheadless-VERSION-x86_64-apple-darwin.tar.gz.sha256`
+- On Windows (PowerShell): `Get-FileHash .\\rfheadless-VERSION-x86_64-pc-windows-msvc.zip -Algorithm SHA256`
 
 Notes:
 - The release workflow lives at `.github/workflows/release.yml` and is triggered on push tags `v*` and via manual dispatch.
